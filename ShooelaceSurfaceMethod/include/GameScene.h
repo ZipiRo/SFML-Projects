@@ -66,6 +66,7 @@ namespace Point
     {
         const Color FILL_COLOR = Color::Black;
         const int CHAR_SIZE = 10;
+        const int TEXT_STYLE = Text::Regular;
 
         void SetText(Text &text, Vector2f start, Vector2f end)
         {
@@ -300,6 +301,7 @@ void Start()
     line_length_text.setFont(font_JetBrains);
     line_length_text.setCharacterSize(Point::LineLengthText::CHAR_SIZE);
     line_length_text.setFillColor(Point::LineLengthText::FILL_COLOR);
+    line_length_text.setStyle(Point::LineLengthText::TEXT_STYLE);
 
     shape_area_text.setFont(font_JetBrains);
     shape_area_text.setCharacterSize(Point::ShapeAreaText::CHAR_SIZE);
@@ -318,8 +320,6 @@ void Start()
     mouse_coord_text.setCharacterSize(10);
     mouse_coord_text.setFillColor(Color::Black);
     mouse_coord_text.setStyle(Text::Bold);
-
-    camera.zoom(0.5);
 }
 
 void Update()
