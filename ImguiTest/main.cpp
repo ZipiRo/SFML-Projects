@@ -23,23 +23,32 @@ View canvas;
 Vector2f canvasMousePosition;
 Vector2f worldMousePosition;
 
+CircleShape circle;
+int circle_segments = 30;
+
 void Start()
 {
     canvas = window.getView();
     camera = View(sf::Vector2f(0, 0), sf::Vector2f(window_width, window_height));
+
+    circle = CircleShape(100, circle_segments); 
+    circle.setFillColor(Color::Red);
 }
 
 void Update()
 {
     ImGui::Begin("WOW");
     ImGui::Text("THIS IS AMAZING!");
+    ImGui::SliderInt("Segments:", &circle_segments, 3, 30);
     ImGui::End();
+
+    circle.setPointCount(circle_segments);
 }
 
 void Draw()
 {
     window.setView(camera);
-
+    window.draw(circle);
     window.setView(canvas);
 }
 
