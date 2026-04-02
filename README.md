@@ -1,7 +1,8 @@
 This are SFML projects I made.
 
 ## Dependencies
-- You will need SFML 3.0.2
+- SFML 3.0.0 + Dear ImGui >= 1.91.1, < 1.92.0 + ImGui-SFML  (For ImGui Template) 
+- SFML 3.0.2 (For Default Template)
 - MinGW 14.2.0
 
 To use my build batch file (B.bat) you will need to change the SFML and MinGW path. 
