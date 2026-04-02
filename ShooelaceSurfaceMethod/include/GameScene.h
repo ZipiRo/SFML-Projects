@@ -225,7 +225,6 @@ float ShoelaceAlgo(const std::vector<Vector2f> &points)
     return abs(area) * 0.5;
 }
 
-
 ConvexShape triangle_shape;
 std::vector<Triangle> triangles;
 
