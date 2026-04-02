@@ -1,6 +1,6 @@
-/.vscode
+**/.vscode
+**/build
 /bin
-/build
 *.git
 *.exe
 *.o
