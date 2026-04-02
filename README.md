@@ -19,4 +19,4 @@ When you want to build something your current directory needs to be the one with
 In CMD, PowerShell, etc. use these:
 - To build a project use B.bat 'DirectoryName'
 - To run a project use Run.bat 'DirectoryName'
-- To Create a new project use CProject.bat 'NewProjectName'
+- To Create a new project use CProject.bat 'NewProjectName''Project Type' [Default, ImGui]
