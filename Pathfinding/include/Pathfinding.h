@@ -19,6 +19,7 @@ struct PathfindAlgorithm
     bool path_found;
     bool done;
     int path_index;
+    int grid_size;
     Vector2i start_point, finish_point;
     std::vector<Vector2i> path;
 
@@ -28,10 +29,10 @@ struct PathfindAlgorithm
         path_index = 0;
     }
 
-    virtual void Init(Vector2i start, Vector2i finish) = 0;
-    virtual void StepAlgorithm(Cell grid[GRID_SIZE][GRID_SIZE]) = 0;
+    virtual void Init(Vector2i start, Vector2i finish, int size) = 0;
+    virtual void StepAlgorithm(vector2<Cell> &grid) = 0;
     
-    void StepPath(Cell grid[GRID_SIZE][GRID_SIZE])
+    void StepPath(vector2<Cell> &grid)
     {
         if(path_index >= path.size()) 
         {
@@ -46,8 +47,8 @@ struct PathfindAlgorithm
 
 struct DepthFirstSearch : public PathfindAlgorithm
 {
-    bool visited[GRID_SIZE][GRID_SIZE] = {};
-    Vector2i parent[GRID_SIZE][GRID_SIZE];
+    vector2<bool> visited;
+    vector2<Vector2i> parent;
     std::stack<Vector2i> stack;
 
     DepthFirstSearch()
@@ -57,10 +58,20 @@ struct DepthFirstSearch : public PathfindAlgorithm
         path_found = false;
     }
 
-    void Init(Vector2i start, Vector2i finish) override
+    void Init(Vector2i start, Vector2i finish, int size) override
     {
+        grid_size = size;
+        visited.resize(grid_size);
+        for(auto &v : visited)
+            v.resize(grid_size);
+
+            
+        parent.resize(grid_size);
+        for(auto &v : parent)
+            v.resize(grid_size);
+
         start_point = start;
-        finish_point = finish;
+        finish_point = finish;  
 
         stack.push(start_point);
         visited[start.x][start.y] = true;
@@ -80,7 +91,7 @@ struct DepthFirstSearch : public PathfindAlgorithm
         std::reverse(path.begin(), path.end());
     }
 
-    void StepAlgorithm(Cell grid[GRID_SIZE][GRID_SIZE]) override
+    void StepAlgorithm(vector2<Cell> &grid) override
     {
         if(stack.empty())
         {
@@ -106,7 +117,7 @@ struct DepthFirstSearch : public PathfindAlgorithm
         {
             Vector2i next = current + direction;
 
-            if(next.x < 0 || next.y < 0 || next.x >= GRID_SIZE || next.y >= GRID_SIZE) continue;
+            if(next.x < 0 || next.y < 0 || next.x >= grid_size || next.y >= grid_size) continue;
 
             if(grid[next.y][next.x].type != CELL_WALL && !visited[next.y][next.x])
             {
@@ -131,8 +142,8 @@ struct DepthFirstSearch : public PathfindAlgorithm
 
 struct BreadthFirstSearch : public PathfindAlgorithm
 {
-    bool visited[GRID_SIZE][GRID_SIZE] = {};
-    Vector2i parent[GRID_SIZE][GRID_SIZE];
+    vector2<bool> visited;
+    vector2<Vector2i> parent;
     std::queue<Vector2i> queue;
 
     BreadthFirstSearch()
@@ -142,8 +153,18 @@ struct BreadthFirstSearch : public PathfindAlgorithm
         path_found = false;
     }
 
-    void Init(Vector2i start, Vector2i finish) override
+    void Init(Vector2i start, Vector2i finish, int size) override
     {
+        grid_size = size;
+        visited.resize(grid_size);
+        for(auto &v : visited)
+            v.resize(grid_size);
+
+            
+        parent.resize(grid_size);
+        for(auto &v : parent)
+            v.resize(grid_size);
+
         start_point = start;
         finish_point = finish;
 
@@ -165,7 +186,7 @@ struct BreadthFirstSearch : public PathfindAlgorithm
         std::reverse(path.begin(), path.end());
     }
 
-    void StepAlgorithm(Cell grid[GRID_SIZE][GRID_SIZE]) override
+    void StepAlgorithm(vector2<Cell> &grid) override
     {
         if(queue.empty())
         {
@@ -190,7 +211,7 @@ struct BreadthFirstSearch : public PathfindAlgorithm
         {
             Vector2i next = current + direction;
 
-            if(next.x < 0 || next.y < 0 || next.x >= GRID_SIZE || next.y >= GRID_SIZE) continue;
+            if(next.x < 0 || next.y < 0 || next.x >= grid_size || next.y >= grid_size) continue;
 
             if(grid[next.y][next.x].type != CELL_WALL && !visited[next.y][next.x])
             {

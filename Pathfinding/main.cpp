@@ -7,13 +7,16 @@
 
 #include "include/Timer.h"
 
+template<typename T>
+using vector2 = std::vector<std::vector<T>>;
+
 using namespace sf;
 
 RenderWindow window;
-const int window_width = 750;
-const int window_height = 500;
+const int window_width = 950;
+const int window_height = 700;
 const char *window_title = "Pathfinding Vizualisation";
-const int FPS = 999999;
+const int FPS = 120;
 const float PI = 3.1415926354f;
 
 Color BackgroundColor = Color::Black;
@@ -25,17 +28,16 @@ View canvas;
 Vector2f canvasMousePosition;
 Vector2f worldMousePosition;
 
-float fps_timer = 0.0f;
+float fps_timer = 0;
 int current_FPS;
 
 #include "include/Input.h"
 
-const int GRID_SIZE = 20;
-const int CELL_SIZE = 20;
-const int GRID_LENGTH = GRID_SIZE * CELL_SIZE;
-
 const Vector2i INFO_W_SIZE = Vector2i(250, window_height);
 const Vector2i INFO_W_POS = Vector2i(window_width - INFO_W_SIZE.x, 0);
+
+const int START_GRID_SIZE = 20;
+const int MAX_GRID_LENGTH = window_width - INFO_W_SIZE.x - 150;
 
 const Color CELL_ROOM_COLOR = Color(40, 40, 40);
 const Color CELL_WALL_COLOR = Color(20, 20, 20);
@@ -95,7 +97,9 @@ std::string placeing_type_strings[3] = {"Walls", "Start", "Finish"};
 std::string simulation_state_strings[3] = {"Setup", "Simulateing", "Done"};
 std::string algo_state_strings[5] = {"Waiting", "Initialization", "Steping", "Done"};
 
-Cell grid[GRID_SIZE][GRID_SIZE];
+int grid_size = 0;
+int cell_size = 0;
+vector2<Cell> grid;
 Vector2f grid_position;
 Vector2i hovered_cell = Vector2i(-1, -1);
 Vector2i start_point = Vector2i(-1, -1);
@@ -107,11 +111,22 @@ int placeing = PLACE_WALL;
 float simulation_step_timer = 0;
 float simulation_step_delay = 0.05f;
 float path_step_delay = 0.05f;
+float algo_timer = 0.0f;
 
 int sim_state = SIM_STATE_SETUP; 
 int algo_state = ALGO_STATE_WAITING;
 
 PathfindAlgorithm *algorithm = nullptr;
+
+void InitGrid(int size, vector2<Cell> &grid)
+{
+    grid_size = size;
+    cell_size = MAX_GRID_LENGTH / grid_size;
+
+    grid.resize(grid_size);
+    for(auto &row : grid)
+        row.resize(grid_size);
+}
 
 bool CheckPointOverlapBox(const Vector2f &point, const Vector2f &bmin, const Vector2f &bmax)
 {
@@ -124,14 +139,14 @@ bool CheckPointOverlapBox(const Vector2f &point, const Vector2f &bmin, const Vec
 Vector2i CheckMouseHoverOnCell(const Vector2f &mouse_position)
 {
     hovered_cell = Vector2i(-1, -1);
-    for(int i = 0; i < GRID_SIZE; i++)
+    for(int i = 0; i < grid_size; i++)
     {
-        for (int j = 0; j < GRID_SIZE; j++)
+        for (int j = 0; j < grid_size; j++)
         {
-            int left = grid_position.x + j * CELL_SIZE;
-            int top = grid_position.y + i * CELL_SIZE;
-            int right = left + CELL_SIZE;
-            int bottom = top + CELL_SIZE;
+            int left = grid_position.x + j * cell_size;
+            int top = grid_position.y + i * cell_size;
+            int right = left + cell_size;
+            int bottom = top + cell_size;
             
             if(CheckPointOverlapBox(mouse_position, Vector2f(left, top), Vector2f(right, bottom)))
                 hovered_cell = Vector2i(j, i);
@@ -141,7 +156,7 @@ Vector2i CheckMouseHoverOnCell(const Vector2f &mouse_position)
     return hovered_cell;
 }
 
-void PlaceCell(int place, const Vector2i &hovered_cell)
+void PlaceCell(int place, const Vector2i &hovered_cell, vector2<Cell> &grid)
 {
     if(hovered_cell == Vector2i(-1, -1)) return;
 
@@ -172,17 +187,28 @@ void PlaceCell(int place, const Vector2i &hovered_cell)
     cell.type = type;
 }
 
-void ClearGrid(Cell grid[GRID_SIZE][GRID_SIZE])
+void ClearGrid(vector2<Cell> &grid)
 {
-    for(int i = 0; i < GRID_SIZE; i++)
-        for(int j = 0; j < GRID_SIZE; j++)
+    for(int i = 0; i < grid_size; i++)
+        for(int j = 0; j < grid_size; j++)
             grid[i][j].type = CELL_ROOM;
 
     start_placed = finish_placed = false;
     start_point = finish_point = Vector2i(-1, -1);
 }
 
-void ClearCell(const Vector2i &hovered_cell)
+void ResetGrid(vector2<Cell> &grid)
+{
+    for(int i = 0; i < grid_size; i++)
+        for(int j = 0; j < grid_size; j++)
+        {
+            int &type = grid[i][j].type; 
+            if(!(type == CELL_WALL || type == CELL_START || type == CELL_FINISH))
+                type = CELL_ROOM;
+        }
+}
+
+void ClearCell(const Vector2i &hovered_cell, vector2<Cell> &grid)
 {
     if(hovered_cell == Vector2i(-1, -1)) return;
 
@@ -202,17 +228,17 @@ void ClearCell(const Vector2i &hovered_cell)
     cell.type = CELL_ROOM;
 }
 
-void DrawGrid(const Cell grid[GRID_SIZE][GRID_SIZE])
+void DrawGrid(const vector2<Cell> &grid)
 {
-    RectangleShape rectangle(Vector2f(CELL_SIZE, CELL_SIZE));
+    RectangleShape rectangle(Vector2f(cell_size, cell_size));
     rectangle.setOutlineColor(GRID_OUTLINE_COLOR);
     rectangle.setOutlineThickness(1);
 
-    for(int i = 0; i < GRID_SIZE; i++)
+    for(int i = 0; i < grid_size; i++)
     {
-        for(int j = 0; j < GRID_SIZE; j++)
+        for(int j = 0; j < grid_size; j++)
         {
-            Vector2f position = Vector2f(i * CELL_SIZE, j * CELL_SIZE) + grid_position;
+            Vector2f position = Vector2f(i * cell_size, j * cell_size) + grid_position;
             Cell cell = grid[j][i];
 
             rectangle.setFillColor(grid_colors[cell.type]);
@@ -226,11 +252,11 @@ void DrawCellCursor(const Vector2i &hovered_cell)
 {
     if(hovered_cell == Vector2i(-1, -1)) return;
 
-    RectangleShape rectangle(Vector2f(CELL_SIZE - 2, CELL_SIZE - 2));
+    RectangleShape rectangle(Vector2f(cell_size - 2, cell_size - 2));
     rectangle.setFillColor(Color::Transparent);
     rectangle.setOutlineColor(HOVER_CURSOR_COLOR);
     rectangle.setOutlineThickness(2);
-    rectangle.setPosition(Vector2f(hovered_cell.x * CELL_SIZE, hovered_cell.y * CELL_SIZE) + grid_position);
+    rectangle.setPosition(Vector2f(hovered_cell.x * cell_size, hovered_cell.y * cell_size) + grid_position);
 
     window.draw(rectangle);
 }
@@ -259,10 +285,13 @@ void IGInfoWindow()
     text = "Finish placed: "; finish_placed ? text += "Yes" : text += "No";
     ImGui::Text(text.c_str());
 
-    text = "Simulation State: " + simulation_state_strings[sim_state];
+    text = "Simulation state: " + simulation_state_strings[sim_state];
     ImGui::Text(text.c_str());
 
-    text = "Algorithm State: " + algo_state_strings[algo_state];
+    text = "Algorithm state: " + algo_state_strings[algo_state];
+    ImGui::Text(text.c_str());
+
+    text = "Time taken: " + std::to_string(algo_timer) + "seconds";
     ImGui::Text(text.c_str());
 
     text = "Using: " + algorithm->name;
@@ -286,11 +315,63 @@ void IGInfoWindow()
     if(sim_state != SIM_STATE_SETUP) ImGui::EndDisabled();
 
     ImGui::Text("Algorithm step delay");
-    ImGui::SliderFloat("ASD", &simulation_step_delay, 0.0f, 1.0f);
+    ImGui::SliderFloat("ASD", &simulation_step_delay, 0.0f, 0.25f);
     
     ImGui::Text("Path step delay");
-    ImGui::SliderFloat("PSD", &path_step_delay, 0.0f, 1.0f);
+    ImGui::SliderFloat("PSD", &path_step_delay, 0.0f, 0.25f);
 
+    ImGui::End();
+}
+
+bool IG_MENU_custom_grid_size_window = false;
+void IGMenu()
+{
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("Menu"))
+        {
+            if(sim_state == SIM_STATE_SIMULATEING) ImGui::BeginDisabled();
+
+            if (ImGui::BeginMenu("GridSize"))
+            {
+                if (ImGui::MenuItem("5x5"))   { InitGrid(5, grid); }
+                if (ImGui::MenuItem("10x10")) { InitGrid(10, grid); }
+                if (ImGui::MenuItem("20x20")) { InitGrid(20, grid); }
+                if (ImGui::MenuItem("40x40")) { InitGrid(40, grid); }
+                if (ImGui::MenuItem("Custom")){ IG_MENU_custom_grid_size_window = true; }
+                ImGui::EndMenu();
+            }
+
+            if(sim_state == SIM_STATE_SIMULATEING) ImGui::EndDisabled();
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+}
+
+int IG_CGS_grid_size = 10; 
+void IGCustomGridSizeWindow()
+{
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
+                            ImGuiWindowFlags_NoResize |
+                            ImGuiWindowFlags_NoCollapse;
+
+    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    ImGui::Begin("Custom Grid Size", nullptr, flags);
+    ImGui::InputInt("Size", &IG_CGS_grid_size);
+    
+    if(ImGui::Button("Apply"))
+    {
+        InitGrid(IG_CGS_grid_size, grid);
+        IG_MENU_custom_grid_size_window = false;    
+    }
+    
+    ImGui::SameLine();
+
+    if(ImGui::Button("Close"))
+        IG_MENU_custom_grid_size_window = false;
+    
     ImGui::End();
 }
 
@@ -303,10 +384,10 @@ void SetupState()
     else if(IsKeyboardButtonDown(Keyboard::Key::Num3)) placeing = PLACE_FINISH;
 
     if(IsMouseButtonPressed(Mouse::Button::Left))
-        PlaceCell(placeing, hovered_cell);
+        PlaceCell(placeing, hovered_cell, grid);
 
     if(IsMouseButtonPressed(Mouse::Button::Right))
-        ClearCell(hovered_cell);
+        ClearCell(hovered_cell, grid);
 
     if(IsKeyboardButtonDown(Keyboard::Key::C))
         ClearGrid(grid);
@@ -325,13 +406,15 @@ void SimulationState()
     }
     if(algo_state == ALGO_STATE_INIT)
     {
-        algorithm->Init(start_point, finish_point);
+        algorithm->Init(start_point, finish_point, grid_size);
         algo_state = ALGO_STATE_STEP;
     }
     else if(algo_state == ALGO_STATE_STEP)
     {
         simulation_step_timer += Timer::deltaTime;
         if(simulation_step_timer < simulation_step_delay) return;
+
+        algo_timer += Timer::deltaTime;
         
         algorithm->StepAlgorithm(grid);
 
@@ -360,10 +443,12 @@ void SimulationState()
 
 void ResetToSetup()
 {
+    ResetGrid(grid);
     SetAlgorithm(ALG_DFS, algorithm);
     sim_state = SIM_STATE_SETUP;
     algo_state = ALGO_STATE_WAITING;
     placeing = PLACE_WALL;
+    algo_timer = 0;
 }
 
 void Start()
@@ -372,10 +457,11 @@ void Start()
     camera = View(sf::Vector2f(0, 0), sf::Vector2f(window_width, window_height));
 
     grid_position = Vector2f(
-        (window_width - INFO_W_SIZE.x) * 0.5 - GRID_LENGTH * 0.5,
-        window_height * 0.5 - GRID_LENGTH * 0.5
+        (window_width - INFO_W_SIZE.x) * 0.5 - MAX_GRID_LENGTH * 0.5,
+        window_height * 0.5 - MAX_GRID_LENGTH * 0.5
     );
 
+    InitGrid(START_GRID_SIZE, grid);
     SetAlgorithm(ALG_DFS, algorithm);
 }
 
@@ -385,6 +471,9 @@ void Update()
         ResetToSetup();
 
     IGInfoWindow();
+    IGMenu();
+
+    if(IG_MENU_custom_grid_size_window) { IGCustomGridSizeWindow(); return; }
 
     if(sim_state == SIM_STATE_SETUP) SetupState();
     else if(sim_state == SIM_STATE_SIMULATEING) SimulationState();
@@ -434,7 +523,10 @@ int main()
             fps_timer += Timer::deltaTime;
 
             if(fps_timer >= 1.0f)
+            {
                 current_FPS = 1.0f / Timer::deltaTime;
+                fps_timer = 0;
+            }
 
             canvasMousePosition = window.mapPixelToCoords(Mouse::getPosition(window), canvas);
             worldMousePosition = window.mapPixelToCoords(Mouse::getPosition(window), camera);
