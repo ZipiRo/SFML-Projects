@@ -12,7 +12,7 @@ set /p PROJECT_TYPE=<%PROJECT_DIR%\.project_type
 
 if "%PROJECT_TYPE%"=="imgui" (
     echo ========= ImGui Build ========= 
-    Build_ImGui %PROJECT_DIR%
+    call Build_ImGui %PROJECT_DIR%
 )
 
 if "%PROJECT_TYPE%"=="default" (

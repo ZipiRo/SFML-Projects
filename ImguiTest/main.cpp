@@ -39,7 +39,7 @@ void Update()
 {
     ImGui::Begin("WOW");
     ImGui::Text("THIS IS AMAZING!");
-    ImGui::SliderInt("Segments:", &circle_segments, 3, 30);
+    ImGui::SliderInt("Segments:", &circle_segments, 3, 10);
     ImGui::End();
 
     circle.setPointCount(circle_segments);
