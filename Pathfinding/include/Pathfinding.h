@@ -4,17 +4,22 @@
 
 static std::vector<Vector2i> directions = { Vector2i(-1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1) };
 
-enum ALGORITHMS
+template <typename T>
+std::vector<T> Shuffle(std::vector<T> v) 
 {
-    ALG_DFS,
-    ALG_BFS
-};
+    for (int i = v.size() - 1; i > 0; --i)
+    {
+        int j = rand() % (i + 1);
+        std::swap(v[i], v[j]);
+    }
 
-static std::string algorithms_strings[10] = {"DFS", "BFS"};
+    return v;
+}
 
 struct PathfindAlgorithm
 {
     std::string name;
+    std::string description;
     bool finished;
     bool path_found;
     bool done;
@@ -25,6 +30,8 @@ struct PathfindAlgorithm
 
     PathfindAlgorithm()
     {
+        name = "None";
+        description = "None";
         done = false;
         path_index = 0;
     }
@@ -45,186 +52,20 @@ struct PathfindAlgorithm
     }
 };
 
-struct DepthFirstSearch : public PathfindAlgorithm
+enum ALGORITHMS
 {
-    vector2<bool> visited;
-    vector2<Vector2i> parent;
-    std::stack<Vector2i> stack;
-
-    DepthFirstSearch()
-    {
-        name = "Depth First Search";
-        finished = false;
-        path_found = false;
-    }
-
-    void Init(Vector2i start, Vector2i finish, int size) override
-    {
-        grid_size = size;
-        visited.resize(grid_size);
-        for(auto &v : visited)
-            v.resize(grid_size);
-
-            
-        parent.resize(grid_size);
-        for(auto &v : parent)
-            v.resize(grid_size);
-
-        start_point = start;
-        finish_point = finish;  
-
-        stack.push(start_point);
-        visited[start.x][start.y] = true;
-    }
-
-    void ConstructPath()
-    {
-        Vector2i current = finish_point;
-
-        while (!(current == start_point))
-        {
-            current = parent[current.y][current.x];
-            if(current == start_point) break;
-            path.push_back(current);
-        }
-
-        std::reverse(path.begin(), path.end());
-    }
-
-    void StepAlgorithm(vector2<Cell> &grid) override
-    {
-        if(stack.empty())
-        {
-            finished = true;
-            return;
-        }
-
-        Vector2i current = stack.top();
-        stack.pop();
-        
-        grid[current.y][current.x].type = CELL_VISITED;
-
-        if(current == finish_point)
-        {
-            ConstructPath();
-            path_found = true;
-            finished = true;
-            return;
-        }
-        
-        bool moved = false;
-        for(const auto &direction : directions)
-        {
-            Vector2i next = current + direction;
-
-            if(next.x < 0 || next.y < 0 || next.x >= grid_size || next.y >= grid_size) continue;
-
-            if(grid[next.y][next.x].type != CELL_WALL && !visited[next.y][next.x])
-            {
-                grid[next.y][next.x].type = CELL_FRONTIER;
-    
-                parent[next.y][next.x] = current;
-    
-                visited[next.y][next.x] = true;
-                
-                stack.push(current);
-                stack.push(next);
-                
-                moved = true;
-                break;
-            }
-        }
-
-        if(!moved)
-            grid[current.y][current.x].type = CELL_BACKTRACK;
-    }
+    ALG_DFS,
+    ALG_BFS,
+    ALG_RD_DFS,
+    ALG_BD_BFS
 };
 
-struct BreadthFirstSearch : public PathfindAlgorithm
-{
-    vector2<bool> visited;
-    vector2<Vector2i> parent;
-    std::queue<Vector2i> queue;
+static std::string algorithms_strings[10] = {"DFS", "BFS", "RD_DFS", "BD_BFS"};
 
-    BreadthFirstSearch()
-    {
-        name = "Breadth First Search";
-        finished = false;
-        path_found = false;
-    }
-
-    void Init(Vector2i start, Vector2i finish, int size) override
-    {
-        grid_size = size;
-        visited.resize(grid_size);
-        for(auto &v : visited)
-            v.resize(grid_size);
-
-            
-        parent.resize(grid_size);
-        for(auto &v : parent)
-            v.resize(grid_size);
-
-        start_point = start;
-        finish_point = finish;
-
-        queue.push(start_point);
-        visited[start.x][start.y] = true;
-    }
-
-    void ConstructPath()
-    {
-        Vector2i current = finish_point;
-
-        while (!(current == start_point))
-        {
-            current = parent[current.y][current.x];
-            if(current == start_point) break;
-            path.push_back(current);
-        }
-
-        std::reverse(path.begin(), path.end());
-    }
-
-    void StepAlgorithm(vector2<Cell> &grid) override
-    {
-        if(queue.empty())
-        {
-            finished = true;
-            return;
-        }
-
-        Vector2i current = queue.front();
-        queue.pop();
-        
-        grid[current.y][current.x].type = CELL_VISITED;
-
-        if(current == finish_point)
-        {
-            ConstructPath();
-            path_found = true;
-            finished = true;
-            return;
-        }
-        
-        for(const auto &direction : directions)
-        {
-            Vector2i next = current + direction;
-
-            if(next.x < 0 || next.y < 0 || next.x >= grid_size || next.y >= grid_size) continue;
-
-            if(grid[next.y][next.x].type != CELL_WALL && !visited[next.y][next.x])
-            {
-                visited[next.y][next.x] = true;
-                parent[next.y][next.x] = current;
-    
-                queue.push(next);
-
-                grid[next.y][next.x].type = CELL_FRONTIER;
-            }
-        }
-    }
-};
+#include "Algorithms/BFS.h"
+#include "Algorithms/BD_BFS.h"
+#include "Algorithms/DFS.h"
+#include "Algorithms/RD_DFS.h"
 
 void SetAlgorithm(int alg, PathfindAlgorithm* &algorithm)
 {
@@ -236,6 +77,13 @@ void SetAlgorithm(int alg, PathfindAlgorithm* &algorithm)
         break;
     case ALG_BFS:
         algorithm = new BreadthFirstSearch();
+        break;
+    case ALG_RD_DFS:
+        algorithm = new RandomDirectionDFS();
+        break;
+    case ALG_BD_BFS:
+        algorithm = new BiDirectionalBFS();
+        break;
     default:
         break;
     }

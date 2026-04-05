@@ -25,7 +25,7 @@ set BUILD_DIR=%PROJECT_DIR%\build
 cd %PROJECT_DIR%
 
 %SFML_GPP% -c main.cpp -I"%SFML_INC%" || goto :Exit
-%SFML_GPP% main.o -o Build\main -L"%SFML_LIB%" ^ -lsfml-system -lsfml-window -lsfml-graphics || goto :Exit
+%SFML_GPP% main.o -o Build\main -L"%SFML_LIB%" ^ -lsfml-system -lsfml-window -lsfml-graphics -lsfml-audio || goto :Exit
 del main.o
 
 cd ..

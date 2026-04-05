@@ -27,7 +27,7 @@ cd %PROJECT_DIR%
 
 %SFML_GPP% -c main.cpp "%SFML_IMGUI%\imgui.cpp" "%SFML_IMGUI%\imgui_draw.cpp" "%SFML_IMGUI%\imgui_tables.cpp" "%SFML_IMGUI%\imgui_widgets.cpp" "%SFML_IMGUI%\imgui-SFML.cpp" -I"%SFML_INC%" -I"%SFML_IMGUI%" || goto :Exit
 
-%SFML_GPP% main.o imgui.o imgui_draw.o imgui_tables.o imgui_widgets.o imgui-SFML.o -o Build\main -L"%SFML_LIB%" ^ -lsfml-system -lsfml-window -lsfml-graphics -lopengl32 || goto :Exit
+%SFML_GPP% main.o imgui.o imgui_draw.o imgui_tables.o imgui_widgets.o imgui-SFML.o -o Build\main -L"%SFML_LIB%" ^ -lsfml-system -lsfml-window -lsfml-graphics -lsfml-audio -lopengl32 || goto :Exit
 
 del main.o
 del imgui.o del imgui_draw.o del imgui_tables.o del imgui_widgets.o del imgui-SFML.o
