@@ -7,7 +7,7 @@ struct RandomDirectionDFS : public PathfindAlgorithm
     RandomDirectionDFS()
     {
         name = "Random Direction DFS";
-        description = "Random-direction DFS is a variation of Depth-First Search where, instead of visiting neighbors in a fixed order, the algorithm chooses a random order each time.";
+        description = "Random Direction DFS is a variation of Depth-First Search where, instead of visiting neighbors in a fixed order, the algorithm chooses a random order each time.";
         finished = false;
         path_found = false;
     }

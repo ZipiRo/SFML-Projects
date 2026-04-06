@@ -21,35 +21,34 @@ struct BiDirectionalBFS : public PathfindAlgorithm
         start_point = start;
         finish_point = finish;
 
-        InitBfs(start, bfs_start);
-        InitBfs(finish, bfs_finish);
+        InitBFS(start, bfs_start);
+        InitBFS(finish, bfs_finish);
     }
 
-    void ConstructPath()
+    void ConstructPath(Vector2i meet)
     {
-        Vector2i current;
+        Vector2i current = meet;
 
-        current = finish_point;
         while (!(current == start_point))
         {
             current = bfs_start.parent[current.y][current.x];
-            if(current == start_point) break;
-            path.push_back(current);
-        }
-
-        
-        current = start_point;
-        while (!(current == finish_point))
-        {
-            current = bfs_finish.parent[current.y][current.x];
-            if(current == finish_point) break;
+            if (current == start_point) break;
             path.push_back(current);
         }
 
         std::reverse(path.begin(), path.end());
+
+        current = meet;
+        path.push_back(current);
+        while (!(current == finish_point))
+        {
+            current = bfs_finish.parent[current.y][current.x];
+            if (current == finish_point) break;
+            path.push_back(current);
+        }
     }
 
-    void InitBfs(Vector2i point, BFS &bfs)
+    void InitBFS(Vector2i point, BFS &bfs)
     {
         bfs.visited.resize(grid_size);
         for(auto &v : bfs.visited)
@@ -95,21 +94,21 @@ struct BiDirectionalBFS : public PathfindAlgorithm
 
     void StepAlgorithm(vector2<Cell> &grid) override
     {
-        if(bfs_start.queue.empty() && bfs_finish.queue.empty())
-        {
-            finished = true;
-            return;
-        }
+        Vector2i meet(-1, -1);
 
         Vector2i current_start = StepBFS(finish_point, bfs_start, grid);
-        Vector2i current_finish = StepBFS(start_point, bfs_finish, grid);
+        if (bfs_finish.visited[current_start.y][current_start.x])
+            meet = current_start;
 
-        if(current_start == current_finish)
+        Vector2i current_finish = StepBFS(start_point, bfs_finish, grid);
+        if (bfs_start.visited[current_finish.y][current_finish.x])
+            meet = current_finish;
+
+        if (meet.x != -1)
         {
-            ConstructPath();
+            ConstructPath(meet);
             path_found = true;
             finished = true;
-            return;
         }
     }
 };

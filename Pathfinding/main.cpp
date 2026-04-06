@@ -15,7 +15,7 @@ using vector2 = std::vector<std::vector<T>>;
 using namespace sf;
 
 RenderWindow window;
-const int window_width = 950;
+const int window_width = 1000;
 const int window_height = 700;
 const char *window_title = "Pathfinding Vizualisation";
 const float PI = 3.1415926354f;
@@ -33,15 +33,9 @@ Vector2f worldMousePosition;
 
 float fps_timer = 0;
 int current_FPS;
+bool program_open = true;
 
 #include "include/Input.h"
-
-SoundBuffer pop_sound;
-SoundBuffer done_sound;
-
-std::map<std::string, Texture> key_textures;
-
-Sound sound_player{pop_sound};
 
 const Vector2i INFO_W_SIZE = Vector2i(250, window_height);
 const Vector2i INFO_W_POS = Vector2i(window_width - INFO_W_SIZE.x, 0);
@@ -105,6 +99,15 @@ struct Cell
 
 #include "include/Pathfinding.h"
 
+SoundBuffer pop_sound;
+SoundBuffer done_sound;
+SoundBuffer place_sound;
+SoundBuffer remove_sound;
+ 
+std::map<std::string, Texture> key_textures;
+
+Sound sound_player{pop_sound};
+
 Color grid_colors[10] = { CELL_ROOM_COLOR, CELL_WALL_COLOR, CELL_START_COLOR, CELL_FINISH_COLOR, CELL_VISITED_COLOR, CELL_BACKTRACK_COLOR, CELL_FRONTIER_COLOR, CELL_PATH_COLOR};
 std::string placeing_type_strings[3] = {"Walls", "Start", "Finish"};
 std::string simulation_state_strings[3] = {"Setup", "Simulateing", "Done"};
@@ -121,17 +124,17 @@ Vector2i finish_point;
 bool start_placed;
 bool finish_placed;
 
-int placeing = PLACE_WALL;
+int placeing;
 float step_timer = 0;
 
 float simulation_step_delay = 0.05f;
 float path_step_delay = 0.05f;
 
-int sim_state = SIM_STATE_SETUP; 
-int algo_state = ALGO_STATE_WAITING;
+int sim_state; 
+int algo_state;
 
 PathfindAlgorithm *algorithm = nullptr;
-int using_algorithm = ALG_DFS; 
+int using_algorithm = algo["DFS"]; 
 float algo_timer = 0;
 bool algorithm_paused = false;
 
@@ -192,6 +195,10 @@ void PlaceCell(int place, const Vector2i &hovered_cell, vector2<Cell> &grid)
     }
 
     cell.type = type;
+
+    sound_player.setBuffer(place_sound);
+    sound_player.setPitch(1);
+    sound_player.play();
 }
 
 void InitGrid(int size, vector2<Cell> &grid)
@@ -202,7 +209,7 @@ void InitGrid(int size, vector2<Cell> &grid)
 
     grid_position = Vector2f(
         (window_width - INFO_W_SIZE.x) * 0.5 - grid_length * 0.5,
-        window_height * 0.5 - grid_length * 0.5
+        (window_height + 20) * 0.5 - grid_length * 0.5
     );
 
     grid.resize(grid_size);
@@ -215,6 +222,9 @@ void InitGrid(int size, vector2<Cell> &grid)
 
     start_placed = finish_placed = false;
     start_point = finish_point = Vector2i(-1, -1);
+    sim_state = SIM_STATE_SETUP;
+    algo_state = ALGO_STATE_WAITING;
+    placeing = PLACE_WALL;
 }
 
 void ClearGrid(vector2<Cell> &grid)
@@ -244,6 +254,8 @@ void ClearCell(const Vector2i &hovered_cell, vector2<Cell> &grid)
 
     Cell &cell = grid[hovered_cell.y][hovered_cell.x];
 
+    if(cell.type == CELL_ROOM) return;
+
     if(cell.type == CELL_START && start_placed) 
     {
         start_point = Vector2i(-1, -1);
@@ -256,6 +268,10 @@ void ClearCell(const Vector2i &hovered_cell, vector2<Cell> &grid)
     }
 
     cell.type = CELL_ROOM;
+
+    sound_player.setBuffer(remove_sound);
+    sound_player.setPitch(1);
+    sound_player.play();
 }
 
 void DrawGrid(const vector2<Cell> &grid)
@@ -301,7 +317,7 @@ void IGInfoWindow()
     ImGui::SetNextWindowPos(ImVec2(INFO_W_POS.x, INFO_W_POS.y), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(INFO_W_SIZE.x, INFO_W_SIZE.y), ImGuiCond_Always);
 
-    ImGui::Begin("Information", nullptr, flags);
+    ImGui::Begin("Information", &program_open, flags);
 
     text = "FPS: " + std::to_string(current_FPS);
     ImGui::Text(text.c_str());
@@ -340,42 +356,44 @@ void IGInfoWindow()
 
     ImGui::NewLine();
 
-    if(sim_state != SIM_STATE_SETUP) ImGui::BeginDisabled();
+    ImGui::BeginDisabled(sim_state != SIM_STATE_SETUP);
 
-    text = "Choose algorithm: ";
-    ImGui::Text(text.c_str());
-    
-    bool set_algo_button = false;
-    if(ImGui::Button(algorithms_strings[ALG_DFS].c_str())) {
-        using_algorithm = ALG_DFS; set_algo_button = true;
+    ImGui::Text("Choose algorithm:");
+
+    float max_x = ImGui::GetContentRegionAvail().x;
+    float x = 0;
+
+    for (int i = 0; i < algorithms.size(); i++)
+    {
+        ImVec2 size = ImGui::CalcTextSize(algorithms[i].name.c_str());
+        float btn_width = size.x + 20.0f;
+
+        if (x + btn_width > max_x) x = 0;
+        else if (x > 0) ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, 
+            (i == using_algorithm) ? ImVec4(0.2f,0.7f,0.2f,1.0f)
+                                    : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+        
+        if (ImGui::Button(algorithms[i].name.c_str(), ImVec2(btn_width, 0)))
+        {
+            delete algorithm;
+            algorithm = algorithms[i].create();
+            using_algorithm = i;
+        }
+
+        ImGui::PopStyleColor();
+
+        x += btn_width + ImGui::GetStyle().ItemSpacing.x;
     }
-    
-    ImGui::SameLine();
 
-    if(ImGui::Button(algorithms_strings[ALG_BFS].c_str())) {
-        using_algorithm = ALG_BFS; set_algo_button = true;
-    }
-
-    ImGui::SameLine();
-
-    if(ImGui::Button(algorithms_strings[ALG_RD_DFS].c_str())) {
-        using_algorithm = ALG_RD_DFS; set_algo_button = true;
-    }
-
-    if(ImGui::Button(algorithms_strings[ALG_BD_BFS].c_str())) {
-        using_algorithm = ALG_BD_BFS; set_algo_button = true;
-    }
-
-    if(set_algo_button)
-        SetAlgorithm(using_algorithm, algorithm);
-
-    if(sim_state != SIM_STATE_SETUP) ImGui::EndDisabled();
-
-    text = "Using: " + algorithm->name;
+    text = "Name: " + algorithm->name;
     ImGui::Text(text.c_str());
 
     text = "Description: " + algorithm->description;
     ImGui::TextWrapped(text.c_str());
+
+    ImGui::EndDisabled();
 
     ImGui::End();
 }
@@ -538,7 +556,7 @@ void SimulationState()
         algorithm->StepAlgorithm(grid);
 
         sound_player.setBuffer(pop_sound);
-        sound_player.setPitch(2.0f - (simulation_step_delay / MAX_SIM_STEP_DELAY));
+        sound_player.setPitch(1.5f - (simulation_step_delay / MAX_SIM_STEP_DELAY));
         sound_player.play();
 
         if(algorithm->finished)
@@ -548,6 +566,7 @@ void SimulationState()
             grid[finish_point.y][finish_point.x].type = CELL_FINISH;
          
             sound_player.setBuffer(done_sound);
+            sound_player.setPitch(1);
             sound_player.play();   
         }
 
@@ -570,7 +589,8 @@ void SimulationState()
 void ResetToSetup()
 {
     ResetGrid(grid);
-    SetAlgorithm(using_algorithm, algorithm);
+    delete algorithm;
+    algorithm = algorithms[using_algorithm].create();
     sim_state = SIM_STATE_SETUP;
     algo_state = ALGO_STATE_WAITING;
     placeing = PLACE_WALL;
@@ -589,8 +609,12 @@ void Start()
     canvas = window.getView();
     camera = View(sf::Vector2f(0, 0), sf::Vector2f(window_width, window_height));
 
+    RegisterAlgorithms();
+
     InitGrid(START_GRID_SIZE, grid);
-    SetAlgorithm(using_algorithm, algorithm);
+
+    delete algorithm;
+    algorithm = algorithms[using_algorithm].create();
 }
 
 void Update()
@@ -624,7 +648,7 @@ void Draw()
 int main()
 {
     srand(time(0));
-    window = RenderWindow(VideoMode({window_width, window_height}), window_title, sf::Style::Close);
+    window = RenderWindow(VideoMode({window_width, window_height}), window_title, sf::Style::None);
     window.setFramerateLimit(FPS);
 
     if(!font_jetBrains.openFromFile("resources/JetBrainsMono-Regular.ttf"))
@@ -634,6 +658,12 @@ int main()
         return 1;
 
     if(!done_sound.loadFromFile("resources/done.wav"))
+        return 1;
+
+    if(!place_sound.loadFromFile("resources/place.wav"))
+        return 1;
+
+    if(!remove_sound.loadFromFile("resources/remove.wav"))
         return 1;
 
     if(!key_textures["mouse_left_key"].loadFromFile("resources/Mouse_Left_Key_Dark.png"))
@@ -681,6 +711,8 @@ int main()
             }
         }
         
+        if(!program_open) window.close();
+
         Timer::Tick();
         if(Timer::deltaTime >= 1.0f / FPS)
         {

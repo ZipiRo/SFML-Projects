@@ -1,6 +1,7 @@
 #include <stack>
 #include <queue>
 #include <algorithm>
+#include <map>
 
 static std::vector<Vector2i> directions = { Vector2i(-1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1) };
 
@@ -52,39 +53,29 @@ struct PathfindAlgorithm
     }
 };
 
-enum ALGORITHMS
-{
-    ALG_DFS,
-    ALG_BFS,
-    ALG_RD_DFS,
-    ALG_BD_BFS
-};
-
-static std::string algorithms_strings[10] = {"DFS", "BFS", "RD_DFS", "BD_BFS"};
-
 #include "Algorithms/BFS.h"
 #include "Algorithms/BD_BFS.h"
 #include "Algorithms/DFS.h"
 #include "Algorithms/RD_DFS.h"
 
-void SetAlgorithm(int alg, PathfindAlgorithm* &algorithm)
+struct AlgorithmEntry 
 {
-    delete algorithm;
-    switch (alg)
-    {
-    case ALG_DFS:
-        algorithm = new DepthFirstSearch();
-        break;
-    case ALG_BFS:
-        algorithm = new BreadthFirstSearch();
-        break;
-    case ALG_RD_DFS:
-        algorithm = new RandomDirectionDFS();
-        break;
-    case ALG_BD_BFS:
-        algorithm = new BiDirectionalBFS();
-        break;
-    default:
-        break;
-    }
+    std::string name;
+    std::function<PathfindAlgorithm*()> create;
+};
+
+std::vector<AlgorithmEntry> algorithms;
+std::map<std::string, int> algo;
+
+void RegisterAlgorithms()
+{
+    int algo_count = 0;
+    algorithms.push_back({"DFS", [](){ return new DepthFirstSearch(); }});
+    algo["DFS"] = algo_count++;
+    algorithms.push_back({"BFS", [](){ return new BreadthFirstSearch(); }});
+    algo["BFS"] = algo_count++;
+    algorithms.push_back({"RD_DFS", [](){ return new RandomDirectionDFS(); }});
+    algo["RD_DFS"] = algo_count++;
+    algorithms.push_back({"BD_BFS", [](){ return new BiDirectionalBFS(); }});
+    algo["BD_BFS"] = algo_count++;
 }
