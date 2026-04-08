@@ -70,7 +70,7 @@ void IGCustomGridSizeWindow()
     ImGui::Begin("Custom Grid Size", nullptr, flags);
     ImGui::InputInt("Size", &CGS_grid_size);
     
-    if(ImGui::Button("Apply"))
+    if(ImGui::Button("Apply (Enter)") || ImGui::IsKeyPressed(ImGuiKey_Enter))
     {
         InitGrid(CGS_grid_size, grid);
         IG_MENU_custom_grid_size_window = false;    
@@ -86,6 +86,7 @@ void IGCustomGridSizeWindow()
 
 void IGKeybindsWindow()
 {
+    Vector2f sprite_size(40, 40);
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
                             ImGuiWindowFlags_NoResize |
                             ImGuiWindowFlags_NoCollapse;
@@ -93,63 +94,63 @@ void IGKeybindsWindow()
     ImGui::SetNextWindowSize(ImVec2(500, 500));
     ImGui::Begin("Keybinds", nullptr, flags);
     
-    ImGui::Image(key_textures["mouse_left"], Vector2f(50, 50));
+    ImGui::Image(key_textures["mouse_left"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo place cells");
 
-    ImGui::Image(key_textures["mouse_right"], Vector2f(50, 50));
+    ImGui::Image(key_textures["mouse_right"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo clear cells");
 
-    ImGui::Image(key_textures["1"], Vector2f(50, 50));
+    ImGui::Image(key_textures["1"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo place walls");
 
-    ImGui::Image(key_textures["2"], Vector2f(50, 50));
+    ImGui::Image(key_textures["2"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo place start point");
     
-    ImGui::Image(key_textures["3"], Vector2f(50, 50));
+    ImGui::Image(key_textures["3"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo place finish point");
 
-    ImGui::Image(key_textures["C"], Vector2f(50, 50));
+    ImGui::Image(key_textures["C"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo clear the grid");
 
-    ImGui::Image(key_textures["R"], Vector2f(50, 50));
+    ImGui::Image(key_textures["R"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo reset to setup without clearing the grid");
 
-    ImGui::Image(key_textures["P"], Vector2f(50, 50));
+    ImGui::Image(key_textures["P"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo toggle pause simulation");
 
-    ImGui::Image(key_textures["H"], Vector2f(50, 50));
+    ImGui::Image(key_textures["H"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo hide all the ui on screen");
 
-    ImGui::Image(key_textures["I"], Vector2f(50, 50));
+    ImGui::Image(key_textures["I"], sprite_size);
     ImGui::SameLine();
-    ImGui::Text("\nTo open the information window");
+    ImGui::Text("\nTo open the paths information window");
 
-    ImGui::Image(key_textures["K"], Vector2f(50, 50));
+    ImGui::Image(key_textures["K"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo open this window");
 
-    ImGui::Image(key_textures["F1"], Vector2f(50, 50));
+    ImGui::Image(key_textures["F1"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo open save grid window");
 
-    ImGui::Image(key_textures["F2"], Vector2f(50, 50));
+    ImGui::Image(key_textures["F2"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo open load grid window");
 
-    ImGui::Image(key_textures["Esc"], Vector2f(50, 50));
+    ImGui::Image(key_textures["Esc"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo close the program");
 
-    ImGui::Image(key_textures["Space"], Vector2f(50, 50));
+    ImGui::Image(key_textures["Space"], sprite_size);
     ImGui::SameLine();
     ImGui::Text("\nTo start the simulation");
     
@@ -199,46 +200,11 @@ void IGPathsWindow()
     text = "Path length: " + std::to_string(algorithm->path.size()) + " cells";
     ImGui::Text(text.c_str());
 
+
+
+
+
     ImGui::NewLine();
-
-    ImGui::Text("Algorithm step delay");
-    ImGui::SliderFloat("ASD", &simulation_step_delay, 0.0f, MAX_SIM_STEP_DELAY);
-    
-    ImGui::Text("Path step delay");
-    ImGui::SliderFloat("PSD", &path_step_delay, 0.0f, MAX_PATH_STEP_DELAY);
-
-    if(ImGui::Button("Reset Grid (R)"))
-        ResetToSetup();
-    
-    ImGui::SameLine();
-
-    ImGui::BeginDisabled(sim_state != SIM_STATE_SETUP);
-
-    if(ImGui::Button("Clear Grid (C)"))
-        ClearGrid(grid);
-
-    ImGui::PushStyleColor(ImGuiCol_Button, 
-        (sim_state == SIM_STATE_SIMULATING) ? ImVec4(0.2f,0.7f,0.2f,1.0f)
-                                : ImGui::GetStyleColorVec4(ImGuiCol_Button));
-
-    if(ImGui::Button("Start (Space)") && start_placed && finish_placed)
-        sim_state = SIM_STATE_SIMULATING;
-
-    ImGui::PopStyleColor();
-
-    ImGui::EndDisabled();
-
-    ImGui::SameLine();
-
-
-    ImGui::PushStyleColor(ImGuiCol_Button, 
-        (algorithm_paused == false) ? ImVec4(0.5f,0.0f,0.2f,1.0f)
-                                : ImVec4(0.2f,0.7f,0.2f,1.0f));
-
-    if(ImGui::Button(!algorithm_paused ? "Pause (P)" : "Play (P)"))
-        algorithm_paused = !algorithm_paused;
-    
-        ImGui::PopStyleColor();
 
     ImGui::Text("Place:");
 
@@ -272,6 +238,55 @@ void IGPathsWindow()
         placeing = PLACE_FINISH;
 
     ImGui::PopStyleColor();
+
+
+
+
+
+    ImGui::NewLine();
+
+    ImGui::Text("Algorithm step delay");
+    ImGui::SliderFloat("ASD", &simulation_step_delay, 0.0f, MAX_SIM_STEP_DELAY);
+    
+    ImGui::Text("Path step delay");
+    ImGui::SliderFloat("PSD", &path_step_delay, 0.0f, MAX_PATH_STEP_DELAY);
+
+    if(ImGui::Button("Reset Grid (R)"))
+        ResetToSetup();
+    
+    ImGui::SameLine();
+
+    ImGui::BeginDisabled(sim_state != SIM_STATE_SETUP);
+
+    if(ImGui::Button("Clear Grid (C)"))
+        ClearGrid(grid);
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 
+        (sim_state == SIM_STATE_SIMULATING) ? ImVec4(0.2f,0.7f,0.2f,1.0f)
+                                : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+
+    if(ImGui::Button("Start (Space)") && start_placed && finish_placed)
+        sim_state = SIM_STATE_SIMULATING;
+
+    ImGui::PopStyleColor();
+
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 
+        (algorithm_paused == false) ? ImVec4(0.5f,0.0f,0.2f,1.0f)
+                                : ImVec4(0.2f,0.7f,0.2f,1.0f));
+
+    if(ImGui::Button(!algorithm_paused ? "Pause (P)" : "Play (P)"))
+        algorithm_paused = !algorithm_paused;
+    
+    ImGui::PopStyleColor();
+
+
+
+
+
 
     ImGui::NewLine();
 
