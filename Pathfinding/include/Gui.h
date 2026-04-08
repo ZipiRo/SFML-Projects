@@ -11,7 +11,7 @@ void IGMenu()
     {
         if (ImGui::BeginMenu("Menu"))
         {
-            if(sim_state == SIM_STATE_SIMULATEING) ImGui::BeginDisabled();
+            if(sim_state == SIM_STATE_SIMULATING) ImGui::BeginDisabled();
 
             if (ImGui::BeginMenu("GridSize"))
             {
@@ -24,7 +24,7 @@ void IGMenu()
                 ImGui::EndMenu();
             }
 
-            if(sim_state == SIM_STATE_SIMULATEING) ImGui::EndDisabled();
+            if(sim_state == SIM_STATE_SIMULATING) ImGui::EndDisabled();
             
             if (ImGui::BeginMenu("MaxFPS"))
             {
@@ -35,10 +35,10 @@ void IGMenu()
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("Save&Load Grid"))
+            if (ImGui::BeginMenu("Grid"))
             {
-                if (ImGui::MenuItem("Save Grid")) IG_MENU_save_grid_window = true;
-                if (ImGui::MenuItem("Load Grid")) IG_MENU_load_grid_window = true;
+                if (ImGui::MenuItem("Save (F1)")) IG_MENU_save_grid_window = true;
+                if (ImGui::MenuItem("Load (F2)")) IG_MENU_load_grid_window = true;
 
                 ImGui::EndMenu();
             }
@@ -207,33 +207,71 @@ void IGPathsWindow()
     ImGui::Text("Path step delay");
     ImGui::SliderFloat("PSD", &path_step_delay, 0.0f, MAX_PATH_STEP_DELAY);
 
-    if(ImGui::Button("Reset Grid"))
-    {
+    if(ImGui::Button("Reset Grid (R)"))
         ResetToSetup();
-    }
     
     ImGui::SameLine();
 
     ImGui::BeginDisabled(sim_state != SIM_STATE_SETUP);
 
-    if(ImGui::Button("Clear Grid"))
-    {
+    if(ImGui::Button("Clear Grid (C)"))
         ClearGrid(grid);
-    }
 
-    if(ImGui::Button("Start") && start_placed && finish_placed)
-    {
-        sim_state = SIM_STATE_SIMULATEING;
-    }
+    ImGui::PushStyleColor(ImGuiCol_Button, 
+        (sim_state == SIM_STATE_SIMULATING) ? ImVec4(0.2f,0.7f,0.2f,1.0f)
+                                : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+
+    if(ImGui::Button("Start (Space)") && start_placed && finish_placed)
+        sim_state = SIM_STATE_SIMULATING;
+
+    ImGui::PopStyleColor();
 
     ImGui::EndDisabled();
 
     ImGui::SameLine();
 
-    if(ImGui::Button(!algorithm_paused ? "Pause" : "Play"))
-    {
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 
+        (algorithm_paused == false) ? ImVec4(0.5f,0.0f,0.2f,1.0f)
+                                : ImVec4(0.2f,0.7f,0.2f,1.0f));
+
+    if(ImGui::Button(!algorithm_paused ? "Pause (P)" : "Play (P)"))
         algorithm_paused = !algorithm_paused;
-    }
+    
+        ImGui::PopStyleColor();
+
+    ImGui::Text("Place:");
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 
+        (placeing == PLACE_WALL) ? ImVec4(0.2f,0.7f,0.2f,1.0f)
+                                : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+
+    if(ImGui::Button("Wall (1)"))
+        placeing = PLACE_WALL;
+
+    ImGui::PopStyleColor();
+
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 
+        (placeing == PLACE_START) ? ImVec4(0.2f,0.7f,0.2f,1.0f)
+                                : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+
+    if(ImGui::Button("Start (2)"))
+        placeing = PLACE_START;
+
+    ImGui::PopStyleColor();
+
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 
+        (placeing == PLACE_FINISH) ? ImVec4(0.2f,0.7f,0.2f,1.0f)
+                                : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+    
+    if(ImGui::Button("Finish (3)"))
+        placeing = PLACE_FINISH;
+
+    ImGui::PopStyleColor();
 
     ImGui::NewLine();
 
@@ -293,7 +331,7 @@ void IGSaveGridWindow()
     ImGui::SameLine();
     ImGui::Text("(.grid)");
 
-    if(ImGui::Button("Save") || ImGui::IsKeyDown(ImGuiKey_Enter))
+    if(ImGui::Button("Save (Enter)") || ImGui::IsKeyDown(ImGuiKey_Enter))
     {
         if(strlen(save_file) > 0)
         {
@@ -327,7 +365,7 @@ void IGLoadGridWindow()
 
     if(file_error) ImGui::Text("File had some errors!");
     
-    if(ImGui::Button("Load") || ImGui::IsKeyDown(ImGuiKey_Enter))
+    if(ImGui::Button("Load (Enter)") || ImGui::IsKeyDown(ImGuiKey_Enter))
     {
         if(strlen(file_path) > 0)
         {

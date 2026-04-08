@@ -1,5 +1,17 @@
 #include "Input.h"
 
+template <typename T>
+std::vector<T> Shuffle(std::vector<T> v) 
+{
+    for (int i = v.size() - 1; i > 0; --i)
+    {
+        int j = rand() % (i + 1);
+        std::swap(v[i], v[j]);
+    }
+
+    return v;
+}
+
 Color LerpColor(const Color& colora, const Color& colorb, float t)
 {
     return Color(
@@ -49,7 +61,7 @@ enum PlaceingType
 enum SimState
 {
     SIM_STATE_SETUP,
-    SIM_STATE_SIMULATEING,
+    SIM_STATE_SIMULATING,
     SIM_STATE_DONE
 };
 
@@ -76,7 +88,7 @@ Sound sound_player(soundbuffers["nan"]);
 
 Color cell_colors[6] = { CELL_ROOM_COLOR, CELL_WALL_COLOR, CELL_START_COLOR, CELL_FINISH_COLOR, CELL_TRACE_COLOR};
 std::string place_type_string[3] = {"Walls", "Start", "Finish"};
-std::string sim_state_string[3] = {"Setup", "Simulateing", "Done"};
+std::string sim_state_string[3] = {"Setup", "Simulating", "Done"};
 std::string algo_state_strings[4] = {"Waiting", "Initialization", "Steping", "Done"};
 
 int grid_size;
@@ -101,11 +113,11 @@ int sim_state;
 int algo_state;
 
 PathfindAlgorithm *algorithm = nullptr;
-int using_algorithm = algo["DFS"]; 
+int using_algorithm = algo[first_algorithm]; 
 float algo_timer = 0;
 bool algorithm_paused = false;
 
-bool show_ui = true;
+bool show_gui = true;
 
 bool CheckPointOverlapBox(const Vector2f &point, const Vector2f &bmin, const Vector2f &bmax)
 {
@@ -156,7 +168,7 @@ void SetupState()
 
     if(IsKeyboardButtonDown(Keyboard::Key::Space) && start_placed && finish_placed)
     {
-        sim_state = SIM_STATE_SIMULATEING;
+        sim_state = SIM_STATE_SIMULATING;
     }
 }
 
@@ -262,7 +274,7 @@ void Update()
         algorithm_paused = !algorithm_paused;
 
     if(IsKeyboardButtonDown(Keyboard::Key::H))
-        show_ui = !show_ui;
+        show_gui = !show_gui;
 
     if(IsKeyboardButtonDown(Keyboard::Key::I))
         IG_MENU_paths_window = !IG_MENU_paths_window;
@@ -270,7 +282,7 @@ void Update()
     if(IsKeyboardButtonDown(Keyboard::Key::K))
         IG_MENU_keybinds_window = !IG_MENU_keybinds_window;
 
-    if(show_ui)
+    if(show_gui)
     {
         IGMenu();
 
@@ -280,7 +292,7 @@ void Update()
     }
 
     if(sim_state == SIM_STATE_SETUP) SetupState();
-    else if(sim_state == SIM_STATE_SIMULATEING && !algorithm_paused) SimulationState();
+    else if(sim_state == SIM_STATE_SIMULATING && !algorithm_paused) SimulationState();
 }
 
 void Draw()

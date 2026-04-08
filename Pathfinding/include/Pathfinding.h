@@ -4,18 +4,6 @@
 
 static std::vector<Vector2i> directions = { Vector2i(-1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1) };
 
-template <typename T>
-std::vector<T> Shuffle(std::vector<T> v) 
-{
-    for (int i = v.size() - 1; i > 0; --i)
-    {
-        int j = rand() % (i + 1);
-        std::swap(v[i], v[j]);
-    }
-
-    return v;
-}
-
 struct PathfindAlgorithm
 {
     std::string name;
@@ -67,10 +55,10 @@ struct PathfindAlgorithm
     }
 };
 
-#include "Algorithms/BFS.h"
-#include "Algorithms/BD_BFS.h"
-#include "Algorithms/DFS.h"
-#include "Algorithms/RD_DFS.h"
+#include "PathfindingAgorithms/BFS.h"
+#include "PathfindingAgorithms/DFS.h"
+#include "PathfindingAgorithms/BD_BFS.h"
+#include "PathfindingAgorithms/RD_DFS.h"
 
 struct AlgorithmEntry 
 {
@@ -80,6 +68,7 @@ struct AlgorithmEntry
 
 std::vector<AlgorithmEntry> algorithms;
 std::map<std::string, int> algo;
+std::string first_algorithm;
 
 void RegisterAlgorithms()
 {
@@ -92,4 +81,6 @@ void RegisterAlgorithms()
     algo["RD_DFS"] = algo_count++;
     algorithms.push_back({"BD_BFS", [](){ return new BiDirectionalBFS(); }});
     algo["BD_BFS"] = algo_count++;
+
+    first_algorithm = "DFS";
 }
