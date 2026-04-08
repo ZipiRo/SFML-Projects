@@ -5,6 +5,9 @@ struct BiDirectionalBFS : public PathfindAlgorithm
         vector2<bool> visited;
         vector2<Vector2i> parent;
         std::queue<Vector2i> queue;
+
+        Color visited_color;
+        Color frontier_color;
     } bfs_start, bfs_finish;
 
     BiDirectionalBFS()
@@ -23,6 +26,12 @@ struct BiDirectionalBFS : public PathfindAlgorithm
 
         InitBFS(start, bfs_start);
         InitBFS(finish, bfs_finish);
+
+        bfs_start.visited_color = Color(190, 63, 63);
+        bfs_start.frontier_color = Color(225, 40, 40);
+
+        bfs_finish.visited_color = Color(63, 175, 190);
+        bfs_finish.frontier_color = Color(30, 205, 228);
     }
 
     void ConstructPath(Vector2i meet)
@@ -70,7 +79,8 @@ struct BiDirectionalBFS : public PathfindAlgorithm
         Vector2i current = bfs.queue.front();
         bfs.queue.pop();
         
-        grid[current.y][current.x].type = CELL_VISITED;
+        grid[current.y][current.x].type = CELL_NONE;
+        grid[current.y][current.x].color = bfs.visited_color;
         
         for(const auto &direction : directions)
         {
@@ -85,7 +95,8 @@ struct BiDirectionalBFS : public PathfindAlgorithm
     
                 bfs.queue.push(next);
 
-                grid[next.y][next.x].type = CELL_FRONTIER;
+                grid[next.y][next.x].type = CELL_NONE;
+                grid[next.y][next.x].color = bfs.frontier_color;
             }
         }
 

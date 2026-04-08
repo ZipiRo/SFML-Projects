@@ -4,12 +4,20 @@ struct DepthFirstSearch : public PathfindAlgorithm
     vector2<Vector2i> parent;
     std::stack<Vector2i> stack;
 
+    Color visited_color;
+    Color frontier_color;
+    Color backtrack_color;
+
     DepthFirstSearch()
     {
         name = "Depth First Search";
         description = "Depth-First Search (DFS) is a graph traversal algorithm that explores as far as possible along one branch before backtracking.";
         finished = false;
         path_found = false;
+
+        visited_color = Color(60, 143, 77);
+        frontier_color = Color(30, 212, 67);
+        backtrack_color = Color(36, 81, 45);
     }
 
     void Init(Vector2i start, Vector2i finish, int size) override
@@ -55,7 +63,8 @@ struct DepthFirstSearch : public PathfindAlgorithm
         Vector2i current = stack.top();
         stack.pop();
         
-        grid[current.y][current.x].type = CELL_VISITED;
+        grid[current.y][current.x].type = CELL_NONE;
+        grid[current.y][current.x].color = visited_color;
 
         if(current == finish_point)
         {
@@ -74,7 +83,8 @@ struct DepthFirstSearch : public PathfindAlgorithm
 
             if(grid[next.y][next.x].type != CELL_WALL && !visited[next.y][next.x])
             {
-                grid[next.y][next.x].type = CELL_FRONTIER;
+                grid[next.y][next.x].type = CELL_NONE;
+                grid[next.y][next.x].color = frontier_color;
     
                 parent[next.y][next.x] = current;
     
@@ -89,6 +99,6 @@ struct DepthFirstSearch : public PathfindAlgorithm
         }
 
         if(!moved)
-            grid[current.y][current.x].type = CELL_BACKTRACK;
+            grid[current.y][current.x].color = backtrack_color;
     }
 };

@@ -4,12 +4,18 @@ struct BreadthFirstSearch : public PathfindAlgorithm
     vector2<Vector2i> parent;
     std::queue<Vector2i> queue;
 
+    Color visited_color;
+    Color frontier_color;
+
     BreadthFirstSearch()
     {
         name = "Breadth First Search";
         description = "Breadth-First Search (BFS) is a graph traversal algorithm that explores nodes level by level, visiting all neighbors of a node before moving deeper.";
         finished = false;
         path_found = false;
+
+        visited_color = Color(60, 143, 77);
+        frontier_color = Color(30, 212, 67);
     }
 
     void Init(Vector2i start, Vector2i finish, int size) override
@@ -56,10 +62,11 @@ struct BreadthFirstSearch : public PathfindAlgorithm
         Vector2i current = queue.front();
         queue.pop();
         
-        grid[current.y][current.x].type = CELL_VISITED;
+        grid[current.y][current.x].type = CELL_NONE;
+        grid[current.y][current.x].color = visited_color;
 
         if(current == finish_point)
-        {
+        {   
             ConstructPath();
             path_found = true;
             finished = true;
@@ -79,7 +86,8 @@ struct BreadthFirstSearch : public PathfindAlgorithm
     
                 queue.push(next);
 
-                grid[next.y][next.x].type = CELL_FRONTIER;
+                grid[next.y][next.x].type = CELL_NONE;
+                grid[next.y][next.x].color = frontier_color;
             }
         }
     }

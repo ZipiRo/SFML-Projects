@@ -37,8 +37,19 @@ bool program_open = true;
 
 #include "include/Input.h"
 
+Color LerpColor(const Color& colora, const Color& colorb, float t)
+{
+    return Color(
+        colora.r + (colorb.r - colora.r) * t,
+        colora.g + (colorb.g - colora.g) * t,
+        colora.b + (colorb.b - colora.b) * t,
+        colora.a + (colorb.a - colora.a) * t
+    );
+}
+
 const Vector2i INFO_W_SIZE = Vector2i(250, window_height);
-const Vector2i INFO_W_POS = Vector2i(window_width - INFO_W_SIZE.x, 0);
+const Vector2i INFO_W_POS = Vector2i(window_width - INFO_W_SIZE.x, 18);
+const Vector2i MENU_BAR_SIZE = Vector2i(window_width, 18);
 
 const int START_GRID_SIZE = 20;
 const int MAX_GRID_LENGTH = window_width - INFO_W_SIZE.x - 150;
@@ -47,13 +58,10 @@ const float MAX_SIM_STEP_DELAY = 0.25f;
 const float MAX_PATH_STEP_DELAY = 0.2f;
 
 const Color CELL_ROOM_COLOR = Color(40, 40, 40);
+const Color CELL_TRACE_COLOR = Color(30, 30, 30);
 const Color CELL_WALL_COLOR = Color(20, 20, 20);
-const Color CELL_FINISH_COLOR = Color(200, 0, 0);
-const Color CELL_START_COLOR = Color(0, 200, 0);
-const Color CELL_VISITED_COLOR = Color(30, 184, 231);
-const Color CELL_FRONTIER_COLOR = Color(237, 241, 14);
-const Color CELL_BACKTRACK_COLOR = Color(216, 37, 37);
-const Color CELL_PATH_COLOR = Color(30, 231, 64);
+const Color CELL_START_COLOR = Color(38, 135, 200);
+const Color CELL_FINISH_COLOR = Color(255, 0, 157);
 
 const Color HOVER_CURSOR_COLOR = Color(10, 10, 10);
 const Color GRID_OUTLINE_COLOR = CELL_WALL_COLOR;
@@ -64,10 +72,8 @@ enum CellType
     CELL_WALL,
     CELL_START,
     CELL_FINISH,
-    CELL_VISITED,
-    CELL_BACKTRACK,
-    CELL_FRONTIER,
-    CELL_PATH,
+    CELL_TRACE,
+    CELL_NONE
 };
 
 enum PlaceingType
@@ -94,7 +100,8 @@ enum AlgoState
 
 struct Cell
 {
-    int type = CELL_ROOM;
+    int type;
+    Color color;
 };
 
 #include "include/Pathfinding.h"
@@ -103,12 +110,13 @@ SoundBuffer pop_sound;
 SoundBuffer done_sound;
 SoundBuffer place_sound;
 SoundBuffer remove_sound;
+SoundBuffer find_sound;
  
 std::map<std::string, Texture> key_textures;
 
 Sound sound_player{pop_sound};
 
-Color grid_colors[10] = { CELL_ROOM_COLOR, CELL_WALL_COLOR, CELL_START_COLOR, CELL_FINISH_COLOR, CELL_VISITED_COLOR, CELL_BACKTRACK_COLOR, CELL_FRONTIER_COLOR, CELL_PATH_COLOR};
+Color grid_colors[6] = { CELL_ROOM_COLOR, CELL_WALL_COLOR, CELL_START_COLOR, CELL_FINISH_COLOR, CELL_TRACE_COLOR};
 std::string placeing_type_strings[3] = {"Walls", "Start", "Finish"};
 std::string simulation_state_strings[3] = {"Setup", "Simulateing", "Done"};
 std::string algo_state_strings[5] = {"Waiting", "Initialization", "Steping", "Done"};
@@ -118,6 +126,7 @@ float cell_size;
 float grid_length;
 vector2<Cell> grid;
 Vector2f grid_position;
+Vector2f grid_offset;
 Vector2i hovered_cell;
 Vector2i start_point;
 Vector2i finish_point;
@@ -137,6 +146,8 @@ PathfindAlgorithm *algorithm = nullptr;
 int using_algorithm = algo["DFS"]; 
 float algo_timer = 0;
 bool algorithm_paused = false;
+
+bool show_ui = true;
 
 bool CheckPointOverlapBox(const Vector2f &point, const Vector2f &bmin, const Vector2f &bmax)
 {
@@ -207,11 +218,6 @@ void InitGrid(int size, vector2<Cell> &grid)
     cell_size = MAX_GRID_LENGTH / float(grid_size);
     grid_length = grid_size * cell_size;
 
-    grid_position = Vector2f(
-        (window_width - INFO_W_SIZE.x) * 0.5 - grid_length * 0.5,
-        (window_height + 20) * 0.5 - grid_length * 0.5
-    );
-
     grid.resize(grid_size);
     for(auto &row : grid)
         row.resize(grid_size);
@@ -274,11 +280,34 @@ void ClearCell(const Vector2i &hovered_cell, vector2<Cell> &grid)
     sound_player.play();
 }
 
+void ResetToSetup()
+{
+    ResetGrid(grid);
+    delete algorithm;
+    algorithm = algorithms[using_algorithm].create();
+    sim_state = SIM_STATE_SETUP;
+    algo_state = ALGO_STATE_WAITING;
+    placeing = PLACE_WALL;
+    
+    if(start_point != Vector2i(-1, -1))
+        grid[start_point.y][start_point.x].type = CELL_START;
+    
+    if(finish_point != Vector2i(-1, -1))
+        grid[finish_point.y][finish_point.x].type = CELL_FINISH;
+        
+    algo_timer = 0;
+}
+
 void DrawGrid(const vector2<Cell> &grid)
 {
     RectangleShape rectangle(Vector2f(cell_size, cell_size));
     rectangle.setOutlineColor(GRID_OUTLINE_COLOR);
     rectangle.setOutlineThickness(1);
+
+    grid_position = Vector2f(
+        (window_width + grid_offset.x) * 0.5 - grid_length * 0.5,
+        (window_height + grid_offset.y) * 0.5 - grid_length * 0.5
+    );
 
     for(int i = 0; i < grid_size; i++)
     {
@@ -287,7 +316,11 @@ void DrawGrid(const vector2<Cell> &grid)
             Vector2f position = Vector2f(i * cell_size, j * cell_size) + grid_position;
             Cell cell = grid[j][i];
 
-            rectangle.setFillColor(grid_colors[cell.type]);
+            rectangle.setFillColor(cell.color);
+            if(cell.type == CELL_ROOM || cell.type == CELL_FINISH || 
+                cell.type == CELL_WALL || cell.type == CELL_START || cell.type == CELL_TRACE) 
+                    rectangle.setFillColor(grid_colors[cell.type]);
+
             rectangle.setPosition(position);
             window.draw(rectangle);
         }
@@ -307,8 +340,144 @@ void DrawCellCursor(const Vector2i &hovered_cell)
     window.draw(rectangle);
 }
 
-void IGInfoWindow()
+bool IG_MENU_custom_grid_size_window = false;
+bool IG_MENU_keybinds_window = false;
+bool IG_MENU_info_window = true;
+void IGMenu()
 {
+    grid_offset.y = MENU_BAR_SIZE.y;
+
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("Menu"))
+        {
+            if(sim_state == SIM_STATE_SIMULATEING) ImGui::BeginDisabled();
+
+            if (ImGui::BeginMenu("GridSize"))
+            {
+                if (ImGui::MenuItem("5x5"))   { InitGrid(5, grid); }
+                if (ImGui::MenuItem("10x10")) { InitGrid(10, grid); }
+                if (ImGui::MenuItem("20x20")) { InitGrid(20, grid); }
+                if (ImGui::MenuItem("40x40")) { InitGrid(40, grid); }
+                if (ImGui::MenuItem("Custom")){ IG_MENU_custom_grid_size_window = true; }
+                ImGui::EndMenu();
+            }
+
+            if(sim_state == SIM_STATE_SIMULATEING) ImGui::EndDisabled();
+            
+            if (ImGui::BeginMenu("MaxFPS"))
+            {
+                if (ImGui::MenuItem("60"))  { FPS = 60 + 1; window.setFramerateLimit(FPS); }
+                if (ImGui::MenuItem("120")) { FPS = 120 + 1; window.setFramerateLimit(FPS); }
+                if (ImGui::MenuItem("240")) { FPS = 240 + 1; window.setFramerateLimit(FPS); }
+                if (ImGui::MenuItem("MAX")) { FPS = MAX_FPS + 1; window.setFramerateLimit(FPS); }
+                ImGui::EndMenu();
+            }
+            
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::Button("Keybinds"))
+            IG_MENU_keybinds_window = !IG_MENU_keybinds_window;
+
+        if (ImGui::Button("Information"))
+            IG_MENU_info_window = !IG_MENU_info_window;
+
+        if(ImGui::Button("Exit"))
+            window.close();
+
+        ImGui::EndMainMenuBar();
+    }
+}
+
+int CGS_grid_size;
+void IGCustomGridSizeWindow()
+{
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
+                            ImGuiWindowFlags_NoResize |
+                            ImGuiWindowFlags_NoCollapse;
+
+    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    ImGui::Begin("Custom Grid Size", nullptr, flags);
+    ImGui::InputInt("Size", &CGS_grid_size);
+    
+    if(ImGui::Button("Apply"))
+    {
+        InitGrid(CGS_grid_size, grid);
+        IG_MENU_custom_grid_size_window = false;    
+    }
+    
+    ImGui::SameLine();
+
+    if(ImGui::Button("Close"))
+        IG_MENU_custom_grid_size_window = false;
+    
+    ImGui::End();
+}
+
+void IGKeybindsWindow()
+{
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
+                            ImGuiWindowFlags_NoResize |
+                            ImGuiWindowFlags_NoCollapse;
+
+    ImGui::SetNextWindowSize(ImVec2(500, 500));
+    ImGui::Begin("Keybinds", nullptr, flags);
+    
+    ImGui::Image(key_textures["mouse_left_key"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo place cells");
+
+    ImGui::Image(key_textures["mouse_right_key"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo clear cells");
+
+    ImGui::Image(key_textures["key_1"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo place walls");
+
+    ImGui::Image(key_textures["key_2"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo place start point");
+    
+    ImGui::Image(key_textures["key_3"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo place finish point");
+
+    ImGui::Image(key_textures["key_C"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo clear the grid");
+
+    ImGui::Image(key_textures["key_R"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo reset to setup without clearing the grid");
+
+    ImGui::Image(key_textures["key_P"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo toggle pause simulation");
+
+    ImGui::Image(key_textures["key_Space"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo start the simulation");
+
+    ImGui::Image(key_textures["key_H"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo hide all the ui on screen");
+
+    ImGui::Image(key_textures["key_I"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo open the information window");
+
+    ImGui::Image(key_textures["key_K"], Vector2f(50, 50));
+    ImGui::SameLine();
+    ImGui::Text("\nTo open this window");
+    
+    ImGui::End();
+}
+
+void IGInformationWindow()
+{
+    grid_offset.x = -INFO_W_SIZE.x;
     std::string text;
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
                             ImGuiWindowFlags_NoResize |
@@ -317,7 +486,7 @@ void IGInfoWindow()
     ImGui::SetNextWindowPos(ImVec2(INFO_W_POS.x, INFO_W_POS.y), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(INFO_W_SIZE.x, INFO_W_SIZE.y), ImGuiCond_Always);
 
-    ImGui::Begin("Information", &program_open, flags);
+    ImGui::Begin("Information", nullptr, flags);
 
     text = "FPS: " + std::to_string(current_FPS);
     ImGui::Text(text.c_str());
@@ -346,6 +515,9 @@ void IGInfoWindow()
     text = "Time taken: " + std::to_string(algo_timer) + "seconds";
     ImGui::Text(text.c_str());
 
+    text = "Path length: " + std::to_string(algorithm->path.size()) + " cells";
+    ImGui::Text(text.c_str());
+
     ImGui::NewLine();
 
     ImGui::Text("Algorithm step delay");
@@ -353,6 +525,34 @@ void IGInfoWindow()
     
     ImGui::Text("Path step delay");
     ImGui::SliderFloat("PSD", &path_step_delay, 0.0f, MAX_PATH_STEP_DELAY);
+
+    if(ImGui::Button("Reset Grid"))
+    {
+        ResetToSetup();
+    }
+    
+    ImGui::SameLine();
+
+    ImGui::BeginDisabled(sim_state != SIM_STATE_SETUP);
+
+    if(ImGui::Button("Clear Grid"))
+    {
+        ClearGrid(grid);
+    }
+
+    if(ImGui::Button("Start") && start_placed && finish_placed)
+    {
+        sim_state = SIM_STATE_SIMULATEING;
+    }
+
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    if(ImGui::Button(!algorithm_paused ? "Pause" : "Play"))
+    {
+        algorithm_paused = !algorithm_paused;
+    }
 
     ImGui::NewLine();
 
@@ -395,120 +595,6 @@ void IGInfoWindow()
 
     ImGui::EndDisabled();
 
-    ImGui::End();
-}
-
-bool IG_MENU_custom_grid_size_window = false;
-bool IG_MENU_keybinds_window = false;
-void IGMenu()
-{
-    if (ImGui::BeginMainMenuBar())
-    {
-        if (ImGui::BeginMenu("Menu"))
-        {
-            if(sim_state == SIM_STATE_SIMULATEING) ImGui::BeginDisabled();
-
-            if (ImGui::BeginMenu("GridSize"))
-            {
-                if (ImGui::MenuItem("5x5"))   { InitGrid(5, grid); }
-                if (ImGui::MenuItem("10x10")) { InitGrid(10, grid); }
-                if (ImGui::MenuItem("20x20")) { InitGrid(20, grid); }
-                if (ImGui::MenuItem("40x40")) { InitGrid(40, grid); }
-                if (ImGui::MenuItem("Custom")){ IG_MENU_custom_grid_size_window = true; }
-                ImGui::EndMenu();
-            }
-
-            if(sim_state == SIM_STATE_SIMULATEING) ImGui::EndDisabled();
-            
-            if (ImGui::BeginMenu("MaxFPS"))
-            {
-                if (ImGui::MenuItem("60"))  { FPS = 60 + 1; window.setFramerateLimit(FPS); }
-                if (ImGui::MenuItem("120")) { FPS = 120 + 1; window.setFramerateLimit(FPS); }
-                if (ImGui::MenuItem("240")) { FPS = 240 + 1; window.setFramerateLimit(FPS); }
-                if (ImGui::MenuItem("MAX")) { FPS = MAX_FPS + 1; window.setFramerateLimit(FPS); }
-                ImGui::EndMenu();
-            }
-            
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::Button("Keybinds"))
-            IG_MENU_keybinds_window = true;
-
-        ImGui::EndMainMenuBar();
-    }
-}
-
-int IG_CGS_grid_size = 10; 
-void IGCustomGridSizeWindow()
-{
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
-                            ImGuiWindowFlags_NoResize |
-                            ImGuiWindowFlags_NoCollapse;
-
-    ImGui::SetNextWindowSize(ImVec2(200, 100));
-    ImGui::Begin("Custom Grid Size", nullptr, flags);
-    ImGui::InputInt("Size", &IG_CGS_grid_size);
-    
-    if(ImGui::Button("Apply"))
-    {
-        InitGrid(IG_CGS_grid_size, grid);
-        IG_MENU_custom_grid_size_window = false;    
-    }
-    
-    ImGui::SameLine();
-
-    if(ImGui::Button("Close"))
-        IG_MENU_custom_grid_size_window = false;
-    
-    ImGui::End();
-}
-
-void IGKeybindsWindow()
-{
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
-                            ImGuiWindowFlags_NoResize |
-                            ImGuiWindowFlags_NoCollapse;
-
-    ImGui::SetNextWindowSize(ImVec2(500, 500));
-    ImGui::Begin("Keybinds", &IG_MENU_keybinds_window, flags);
-    
-    ImGui::Image(key_textures["mouse_left_key"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo place cells");
-
-    ImGui::Image(key_textures["mouse_right_key"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo clear cells");
-
-    ImGui::Image(key_textures["key_1"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo place walls");
-
-    ImGui::Image(key_textures["key_2"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo place start point");
-    
-    ImGui::Image(key_textures["key_3"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo place finish point");
-
-    ImGui::Image(key_textures["key_C"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo clear the grid");
-
-    ImGui::Image(key_textures["key_R"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo reset to setup without clearing the grid");
-
-    ImGui::Image(key_textures["key_P"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo toggle pause simulation");
-
-    ImGui::Image(key_textures["key_Space"], Vector2f(50, 50));
-    ImGui::SameLine();
-    ImGui::Text("\nTo start the simulation");
-    
     ImGui::End();
 }
 
@@ -561,13 +647,12 @@ void SimulationState()
 
         if(algorithm->finished)
         {
-            algo_state = ALGO_STATE_DONE;
+            ResetGrid(grid);
+            algorithm->Trace(grid);
             grid[start_point.y][start_point.x].type = CELL_START;
             grid[finish_point.y][finish_point.x].type = CELL_FINISH;
-         
-            sound_player.setBuffer(done_sound);
-            sound_player.setPitch(1);
-            sound_player.play();   
+
+            algo_state = ALGO_STATE_DONE;
         }
 
         step_timer = 0;
@@ -579,35 +664,31 @@ void SimulationState()
         
         algorithm->StepPath(grid);
 
+        float t = (float)algorithm->path_index / (float)algorithm->path.size();
+
+        float pitch = 2.0f - t * 1.5f;
+        pitch = std::clamp(pitch, 0.1f, 3.0f);
+
+        sound_player.setBuffer(find_sound);
+        sound_player.setPitch(pitch);
+        sound_player.play();   
+
         if(algorithm->done)
+        {
+            sound_player.setBuffer(done_sound);
+            sound_player.setPitch(1);
+            sound_player.play();   
             sim_state = SIM_STATE_DONE;
+        }
 
         step_timer = 0;
     }
 }
 
-void ResetToSetup()
-{
-    ResetGrid(grid);
-    delete algorithm;
-    algorithm = algorithms[using_algorithm].create();
-    sim_state = SIM_STATE_SETUP;
-    algo_state = ALGO_STATE_WAITING;
-    placeing = PLACE_WALL;
-    
-    if(start_point != Vector2i(-1, -1))
-        grid[start_point.y][start_point.x].type = CELL_START;
-    
-    if(finish_point != Vector2i(-1, -1))
-        grid[finish_point.y][finish_point.x].type = CELL_FINISH;
-        
-    algo_timer = 0;
-}
-
 void Start()
 {
     canvas = window.getView();
-    camera = View(sf::Vector2f(0, 0), sf::Vector2f(window_width, window_height));
+    camera = View(Vector2f(0, 0), Vector2f(window_width, window_height));
 
     RegisterAlgorithms();
 
@@ -615,21 +696,37 @@ void Start()
 
     delete algorithm;
     algorithm = algorithms[using_algorithm].create();
+
+    grid_offset = Vector2f(0, MENU_BAR_SIZE.y);
 }
 
 void Update()
 {
+    grid_offset = Vector2f(0, 0);
+
     if(IsKeyboardButtonDown(Keyboard::Key::R))
         ResetToSetup();
     
     if(IsKeyboardButtonDown(Keyboard::Key::P))
         algorithm_paused = !algorithm_paused;
 
-    IGInfoWindow();
-    IGMenu();
+    if(IsKeyboardButtonDown(Keyboard::Key::H))
+        show_ui = !show_ui;
 
-    if(IG_MENU_custom_grid_size_window) { IGCustomGridSizeWindow(); return; }
-    if(IG_MENU_keybinds_window) IGKeybindsWindow(); 
+    if(IsKeyboardButtonDown(Keyboard::Key::I))
+        IG_MENU_info_window = !IG_MENU_info_window;
+
+    if(IsKeyboardButtonDown(Keyboard::Key::K))
+        IG_MENU_keybinds_window = !IG_MENU_keybinds_window;
+
+    if(show_ui)
+    {
+        IGMenu();
+
+        if(IG_MENU_custom_grid_size_window) { IGCustomGridSizeWindow(); return; }
+        if(IG_MENU_keybinds_window) IGKeybindsWindow(); 
+        if(IG_MENU_info_window) IGInformationWindow();
+    }
 
     if(sim_state == SIM_STATE_SETUP) SetupState();
     else if(sim_state == SIM_STATE_SIMULATEING && !algorithm_paused) SimulationState();
@@ -648,7 +745,7 @@ void Draw()
 int main()
 {
     srand(time(0));
-    window = RenderWindow(VideoMode({window_width, window_height}), window_title, sf::Style::None);
+    window = RenderWindow(VideoMode({window_width, window_height}), window_title, Style::None);
     window.setFramerateLimit(FPS);
 
     if(!font_jetBrains.openFromFile("resources/JetBrainsMono-Regular.ttf"))
@@ -666,6 +763,9 @@ int main()
     if(!remove_sound.loadFromFile("resources/remove.wav"))
         return 1;
 
+    if(!find_sound.loadFromFile("resources/find.wav"))
+        return 1;
+
     if(!key_textures["mouse_left_key"].loadFromFile("resources/Mouse_Left_Key_Dark.png"))
         return 1;
     
@@ -679,6 +779,15 @@ int main()
         return 1;
 
     if(!key_textures["key_P"].loadFromFile("resources/P_Key_Dark.png"))
+        return 1;
+
+    if(!key_textures["key_H"].loadFromFile("resources/H_Key_Dark.png"))
+        return 1;
+
+    if(!key_textures["key_I"].loadFromFile("resources/I_Key_Dark.png"))
+        return 1;
+
+    if(!key_textures["key_K"].loadFromFile("resources/K_Key_Dark.png"))
         return 1;
 
     if(!key_textures["key_Space"].loadFromFile("resources/Space_Key_Dark.png"))

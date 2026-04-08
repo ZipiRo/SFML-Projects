@@ -1,7 +1,6 @@
 #include <stack>
 #include <queue>
 #include <algorithm>
-#include <map>
 
 static std::vector<Vector2i> directions = { Vector2i(-1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1) };
 
@@ -40,6 +39,17 @@ struct PathfindAlgorithm
     virtual void Init(Vector2i start, Vector2i finish, int size) = 0;
     virtual void StepAlgorithm(vector2<Cell> &grid) = 0;
     
+    void Trace(vector2<Cell> &grid)
+    {
+        int path_index = 0;
+        while (path_index < path.size())
+        {
+            Vector2i point = path[path_index++];
+            
+            grid[point.y][point.x].type = CELL_TRACE;
+        }
+    }
+
     void StepPath(vector2<Cell> &grid)
     {
         if(path_index >= path.size()) 
@@ -48,8 +58,12 @@ struct PathfindAlgorithm
             return;
         }
 
+        float t = (float)path_index / path.size();
+
         Vector2i point = path[path_index++];
-        grid[point.y][point.x].type = CELL_PATH;
+        
+        grid[point.y][point.x].type = CELL_NONE;
+        grid[point.y][point.x].color = LerpColor(CELL_START_COLOR, CELL_FINISH_COLOR, t);
     }
 };
 

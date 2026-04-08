@@ -4,12 +4,20 @@ struct RandomDirectionDFS : public PathfindAlgorithm
     vector2<Vector2i> parent;
     std::stack<Vector2i> stack;
 
+    Color visited_color;
+    Color frontier_color;
+    Color backtrack_color;
+
     RandomDirectionDFS()
     {
         name = "Random Direction DFS";
         description = "Random Direction DFS is a variation of Depth-First Search where, instead of visiting neighbors in a fixed order, the algorithm chooses a random order each time.";
         finished = false;
         path_found = false;
+
+        visited_color = Color(60, 143, 77);
+        frontier_color = Color(30, 212, 67);
+        backtrack_color = Color(36, 81, 45);
     }
 
     void Init(Vector2i start, Vector2i finish, int size) override
@@ -54,8 +62,9 @@ struct RandomDirectionDFS : public PathfindAlgorithm
 
         Vector2i current = stack.top();
         stack.pop();
-        
-        grid[current.y][current.x].type = CELL_VISITED;
+
+        grid[current.y][current.x].type = CELL_NONE;
+        grid[current.y][current.x].color = visited_color;
 
         if(current == finish_point)
         {
@@ -76,7 +85,8 @@ struct RandomDirectionDFS : public PathfindAlgorithm
 
             if(grid[next.y][next.x].type != CELL_WALL && !visited[next.y][next.x])
             {
-                grid[next.y][next.x].type = CELL_FRONTIER;
+                grid[next.y][next.x].type = CELL_NONE;
+                grid[next.y][next.x].color = frontier_color;
     
                 parent[next.y][next.x] = current;
     
@@ -91,6 +101,6 @@ struct RandomDirectionDFS : public PathfindAlgorithm
         }
 
         if(!moved)
-            grid[current.y][current.x].type = CELL_BACKTRACK;
+            grid[current.y][current.x].color = backtrack_color;
     }
 };
