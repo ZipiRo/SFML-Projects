@@ -82,8 +82,6 @@ void ClearCell(const Vector2i &hovered_cell, vector2<Cell> &grid)
 void InitGrid(int size, vector2<Cell> &grid)
 {
     grid_size = size;
-    cell_size = MAX_GRID_LENGTH / float(grid_size);
-    grid_length = grid_size * cell_size;
 
     grid.resize(grid_size);
     for(auto &row : grid)
@@ -97,6 +95,7 @@ void InitGrid(int size, vector2<Cell> &grid)
     start_point = finish_point = Vector2i(-1, -1);
     sim_state = SIM_STATE_SETUP;
     algo_state = ALGO_STATE_WAITING;
+    maze_state = MAZE_STATE_INIT;
     placeing = PLACE_WALL;
 }
 
@@ -205,6 +204,9 @@ void DrawGrid(const vector2<Cell> &grid)
     rectangle.setOutlineColor(GRID_OUTLINE_COLOR);
     rectangle.setOutlineThickness(1);
 
+    cell_size = max_grid_length / float(grid_size);
+    grid_length = grid_size * cell_size;
+    
     grid_position = Vector2f(
         (window_width + grid_offset.x) * 0.5 - grid_length * 0.5,
         (window_height + grid_offset.y) * 0.5 - grid_length * 0.5

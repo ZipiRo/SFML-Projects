@@ -22,12 +22,13 @@ Color LerpColor(const Color& colora, const Color& colorb, float t)
     );
 }
 
+Image gridimage;
+
 const Vector2i INFO_W_SIZE = Vector2i(250, window_height);
 const Vector2i INFO_W_POS = Vector2i(window_width - INFO_W_SIZE.x, 18);
 const Vector2i MENU_BAR_SIZE = Vector2i(window_width, 18);
 
 const int START_GRID_SIZE = 20;
-const int MAX_GRID_LENGTH = window_width - INFO_W_SIZE.x - 150;
 
 const float MAX_SIM_STEP_DELAY = 0.25f;
 const float MAX_PATH_STEP_DELAY = 0.2f;
@@ -58,9 +59,11 @@ enum PlaceingType
     PLACE_FINISH
 };
 
-enum SimState
+enum SimState    
 {
+    SIM_STATE_WAITING,
     SIM_STATE_SETUP,
+    SIM_SATE_CREATE_MAZE,
     SIM_STATE_SIMULATING,
     SIM_STATE_DONE
 };
@@ -71,6 +74,13 @@ enum AlgoState
     ALGO_STATE_INIT,
     ALGO_STATE_STEP,
     ALGO_STATE_DONE
+};
+
+enum MazeState
+{
+    MAZE_STATE_INIT,
+    MAZE_STATE_CREATE,
+    MAZE_STATE_DONE
 };
 
 struct Cell
@@ -94,6 +104,7 @@ std::string algo_state_strings[4] = {"Waiting", "Initialization", "Steping", "Do
 int grid_size;
 float cell_size;
 float grid_length;
+int max_grid_length;
 vector2<Cell> grid;
 Vector2f grid_position;
 Vector2f grid_offset;
@@ -108,9 +119,11 @@ float step_timer = 0;
 
 float simulation_step_delay = 0.05f;
 float path_step_delay = 0.05f;
+float maze_step_delay = 0.05f;
 
 int sim_state; 
 int algo_state;
+int maze_state;
 
 PathfindAlgorithm *algorithm = nullptr;
 int using_algorithm = algo[first_algorithm]; 
@@ -126,8 +139,37 @@ bool CheckPointOverlapBox(const Vector2f &point, const Vector2f &bmin, const Vec
 
     return false;
 }
-
 #include "Grid.h"
+
+void CreateGridFromImage()
+{
+    gridimage.loadFromFile("resources/Gridimage.png");
+    for(int i = 0; i < gridimage.getSize().y; i++)
+    {
+        for(int j = 0; j < gridimage.getSize().x; j++)
+        {
+            Color pixel = gridimage.getPixel({j, i});
+
+            if(pixel.r > 128) grid[i][j].type = CELL_ROOM;
+                else grid[i][j].type = CELL_WALL;
+        }
+    }
+}
+
+void InverseCreateGridFromImage()
+{
+    gridimage.loadFromFile("resources/gridimage.png");
+
+    for(int i = 0; i < gridimage.getSize().y; i++)
+    {
+        for(int j = 0; j < gridimage.getSize().x; j++)
+        {
+            Color pixel = gridimage.getPixel({j, i});
+
+            if(pixel.r > 128) grid[i][j].type = CELL_WALL;
+        }
+    }
+}
 
 void ResetToSetup()
 {
@@ -136,6 +178,7 @@ void ResetToSetup()
     algorithm = algorithms[using_algorithm].create();
     sim_state = SIM_STATE_SETUP;
     algo_state = ALGO_STATE_WAITING;
+    maze_state = MAZE_STATE_INIT;
     placeing = PLACE_WALL;
     
     if(start_point != Vector2i(-1, -1))
@@ -172,8 +215,119 @@ void SetupState()
     }
 }
 
+vector2<bool> maze_visited;
+std::stack<Vector2i> maze_stack;
+Vector2i maze_start_point;
+bool maze_finished;
+void GenerateMazeStep(vector2<Cell> &grid)
+{
+    if(maze_stack.empty())
+    {
+        maze_finished = true;
+        return;
+    }
+
+    Vector2i current = maze_stack.top();
+
+    std::vector<Vector2i> neighbors;
+    for(const auto &direction : directions)
+    {
+        Vector2i neighbor = current + direction * 2;
+        
+        if(neighbor.x < 0 || neighbor.y < 0 || neighbor.x >= grid_size || neighbor.y >= grid_size) continue;
+        if(grid[neighbor.y][neighbor.x].type != CELL_WALL) continue;
+
+        if(!maze_visited[neighbor.y][neighbor.x])
+            neighbors.push_back(neighbor);
+    }
+
+    if(!neighbors.empty()) 
+    {
+        Vector2i next = neighbors[rand() % neighbors.size()];
+        Vector2i direction = (next - current) / 2;
+
+        Vector2i wall = current + direction;
+
+        grid[next.y][next.x].type = CELL_NONE; 
+        grid[next.y][next.x].color = Color(172, 53, 53);
+
+        grid[wall.y][wall.x].type = CELL_NONE;
+        grid[wall.y][wall.x].color = Color(172, 53, 53);
+        
+        sound_player.setBuffer(soundbuffers["remove"]);
+        sound_player.setPitch(1);
+        sound_player.play();
+
+        maze_visited[next.y][next.x] = true;
+        maze_stack.push(next);
+    }
+    else 
+    {
+        maze_stack.pop();
+        grid[current.y][current.x].type = CELL_NONE;
+        grid[current.y][current.x].color = Color(105, 55, 55);
+        
+        sound_player.setBuffer(soundbuffers["pop"]);
+        sound_player.setPitch(1);
+        sound_player.play();
+    }
+}
+
+void CreateMazeState()
+{
+    if(maze_state == MAZE_STATE_INIT)
+    {    
+        maze_stack = std::stack<Vector2i>();
+        maze_visited = vector2<bool>();
+        maze_finished = false;
+
+        maze_visited.resize(grid_size);
+        for(int i = 0; i < grid_size; i++)
+        {
+            maze_visited[i].resize(grid_size);
+            for(int j = 0; j < grid_size; j++)
+                grid[i][j].type = CELL_WALL;
+        }
+
+        maze_start_point = Vector2i(rand() % grid_size, rand() % grid_size);
+
+        maze_stack.push(maze_start_point);
+        maze_visited[maze_start_point.y][maze_start_point.x] = true;
+        grid[maze_start_point.y][maze_start_point.x].type = CELL_ROOM;
+        maze_finished = false;
+
+        maze_state = MAZE_STATE_CREATE;
+    }
+    else if(maze_state == MAZE_STATE_CREATE)
+    {   
+        step_timer += Timer::deltaTime;
+        if(step_timer < maze_step_delay) return;
+
+        GenerateMazeStep(grid);
+
+        if(maze_finished)
+        {
+            maze_state = MAZE_STATE_DONE;
+            
+            sound_player.setBuffer(soundbuffers["done"]);
+            sound_player.setPitch(1);
+            sound_player.play();
+        }
+
+        step_timer = 0;
+    }
+    else if(maze_state == MAZE_STATE_DONE)
+    {
+        sim_state = SIM_STATE_SETUP;
+        maze_state = MAZE_STATE_INIT;
+        ResetToSetup();
+    }
+}
+
 void SimulationState()
 {
+    if(algorithm_paused) return;
+
     if(algo_state == ALGO_STATE_WAITING)
     {
         algo_state = ALGO_STATE_INIT;
@@ -257,6 +411,7 @@ void Update()
         window.close();
 
     grid_offset = Vector2f(0, 0);
+    max_grid_length = window_width - 350;
 
     if(IG_MENU_save_grid_window) { IGSaveGridWindow(); return; }
     if(IG_MENU_load_grid_window) { IGLoadGridWindow();  return; }
@@ -282,6 +437,15 @@ void Update()
     if(IsKeyboardButtonDown(Keyboard::Key::K))
         IG_MENU_keybinds_window = !IG_MENU_keybinds_window;
 
+    if(IsKeyboardButtonDown(Keyboard::Key::M))
+        sim_state = SIM_SATE_CREATE_MAZE;
+
+    if(IsKeyboardButtonDown(Keyboard::Key::L))
+        CreateGridFromImage();
+
+    if(IsKeyboardButtonDown(Keyboard::Key::O))
+        InverseCreateGridFromImage();
+
     if(show_gui)
     {
         IGMenu();
@@ -292,7 +456,8 @@ void Update()
     }
 
     if(sim_state == SIM_STATE_SETUP) SetupState();
-    else if(sim_state == SIM_STATE_SIMULATING && !algorithm_paused) SimulationState();
+    else if(sim_state == SIM_SATE_CREATE_MAZE) CreateMazeState();
+    else if(sim_state == SIM_STATE_SIMULATING) SimulationState();
 }
 
 void Draw()

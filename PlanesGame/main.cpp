@@ -7,8 +7,8 @@
 using namespace sf;
 
 RenderWindow window;
-const int window_width = 800;
-const int window_height = 600;
+const int window_width = 1000;
+const int window_height = 800;
 const char *window_title = "Planes";
 
 const int FPS = 60;

@@ -14,8 +14,8 @@ struct BreadthFirstSearch : public PathfindAlgorithm
         finished = false;
         path_found = false;
 
-        visited_color = Color(60, 143, 77);
-        frontier_color = Color(30, 212, 67);
+        visited_color = Color(143, 60, 60);
+        frontier_color = Color(212, 30, 30);
     }
 
     void Init(Vector2i start, Vector2i finish, int size) override
@@ -34,7 +34,7 @@ struct BreadthFirstSearch : public PathfindAlgorithm
             v.resize(grid_size);
 
         queue.push(start_point);
-        visited[start.x][start.y] = true;
+        visited[start.y][start.x] = true;
     }
 
     void ConstructPath()

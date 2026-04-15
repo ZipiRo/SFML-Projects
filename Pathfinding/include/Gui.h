@@ -9,6 +9,13 @@ void IGMenu()
 
     if (ImGui::BeginMainMenuBar())
     {
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        {
+            dragging = true;
+            mouse_start_drag = Mouse::getPosition();
+            window_start_drag = window.getPosition();
+        }
+
         if (ImGui::BeginMenu("Menu"))
         {
             if(sim_state == SIM_STATE_SIMULATING) ImGui::BeginDisabled();
@@ -46,13 +53,24 @@ void IGMenu()
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Maze"))
+        {
+            if (ImGui::MenuItem("Create")) 
+            {
+                sim_state = SIM_SATE_CREATE_MAZE;
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::Button("Keybinds (K)"))
             IG_MENU_keybinds_window = !IG_MENU_keybinds_window;
 
         if (ImGui::Button("Paths (I)"))
             IG_MENU_paths_window = !IG_MENU_paths_window;
 
-        if(ImGui::Button("Exit (Esc)"))
+        ImGui::SetCursorPosX(MENU_BAR_SIZE.x - 30.0f);
+
+        if (ImGui::Button("X"))
             window.close();
 
         ImGui::EndMainMenuBar();
@@ -160,6 +178,7 @@ void IGKeybindsWindow()
 void IGPathsWindow()
 {
     grid_offset.x = -INFO_W_SIZE.x;
+    max_grid_length = window_width - INFO_W_SIZE.x - 150;
     std::string text;
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove |
                             ImGuiWindowFlags_NoResize |
@@ -251,7 +270,7 @@ void IGPathsWindow()
     ImGui::Text("Path step delay");
     ImGui::SliderFloat("PSD", &path_step_delay, 0.0f, MAX_PATH_STEP_DELAY);
 
-    if(ImGui::Button("Reset Grid (R)"))
+    if(ImGui::Button("Reset (R)"))
         ResetToSetup();
     
     ImGui::SameLine();

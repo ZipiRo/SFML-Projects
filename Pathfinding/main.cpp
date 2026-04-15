@@ -17,7 +17,7 @@ using namespace sf;
 
 RenderWindow window;
 const int window_width = 1000;
-const int window_height = 700;
+const int window_height = 800;
 const char *window_title = "Pathfinding Vizualisation";
 const float PI = 3.1415926354f;
 const int MAX_FPS = 999999;
@@ -34,6 +34,9 @@ Vector2f worldMousePosition;
 
 float fps_timer = 0;
 int current_FPS;
+bool dragging = false;
+Vector2i mouse_start_drag;
+Vector2i window_start_drag;
 
 #include "include/Core.h"
 
@@ -62,9 +65,19 @@ int main()
             ImGui::SFML::ProcessEvent(window, *event);
             
             if (event->is<Event::Closed>())
-            {
                 window.close();
+
+            if(const auto mouse_pressed = event->getIf<Event::MouseButtonReleased>())
+            {
+                if(mouse_pressed->button == Mouse::Button::Left)
+                    dragging = false;
             }
+        }
+
+        if(dragging)
+        {
+            Vector2i delta = Mouse::getPosition() - mouse_start_drag;
+            window.setPosition(window_start_drag + delta);
         }
 
         Timer::Tick();
@@ -87,8 +100,10 @@ int main()
             Update();
 
             window.clear(BackgroundColor);
+            
             Draw();
             ImGui::SFML::Render(window);
+            
             window.display();
         }
     }
