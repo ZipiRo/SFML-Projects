@@ -59,8 +59,8 @@ public:
 
             Vector2i wall = current + direction;
 
-            grid.graph[wall.y][wall.x] = Cell{ CELL_ROOM, &*primary_color };
-            grid.graph[next.y][next.x] = Cell{ CELL_ROOM, &*primary_color };
+            grid.graph[wall.y][wall.x] = Cell(*primary_color, CELL_ROOM);
+            grid.graph[next.y][next.x] = Cell(*primary_color, CELL_ROOM);
 
             visited[next.y][next.x] = true;
             stack.push(next);
@@ -68,8 +68,7 @@ public:
         else
         {
             stack.pop();
-
-            grid.graph[current.y][current.x].color = &*secondary_color;
+            grid.graph[current.y][current.x] = Cell(*secondary_color, CELL_ROOM);
         }
     }
 };

@@ -17,7 +17,7 @@ const float PI = 3.1415926354f;
 View camera, canvas;
 
 Vector2f canvas_mouse_position, world_mouse_position;
-Color background_color = Color(123, 123, 123);
+Color background_color = Color::Black;
 
 float FPS_timer = 1.0f;
 int current_FPS;

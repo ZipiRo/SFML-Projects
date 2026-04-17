@@ -39,7 +39,7 @@ public:
         Vector2i current = stack.top();
         stack.pop();
 
-        grid.graph[current.y][current.x].color = &*visited_color;
+        grid.graph[current.y][current.x] = Cell(*visited_color);
 
         if(current == end)
         {
@@ -56,7 +56,7 @@ public:
 
             if(grid.graph[next.y][next.x].type != CELL_WALL && !visited[next.y][next.x])
             {
-                grid.graph[next.y][next.x].color = &*frontier_color;
+                grid.graph[next.y][next.x] = Cell(*frontier_color);
                 parent[next.y][next.x] = current;
 
                 visited[next.y][next.x] = true;
@@ -70,7 +70,7 @@ public:
         }
         
         if(!moved)
-            grid.graph[current.y][current.x].color = &*backtrack_color;
+            grid.graph[current.y][current.x] = Cell(*backtrack_color);
     }
 
     std::vector<Vector2i> ConstructPath() override

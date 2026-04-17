@@ -47,15 +47,27 @@ private:
         }
     };
 
+    int using_algorithm;
     int algorithm_state;
+
+    float algo_step_delay;
+    int algo_start_delay;
+    
     float step_timer;
     float start_timer;
+    
+    bool algo_pause;
+    bool show_sidebar;
+    bool show_settings;
+
+    Point start;
 
     Grid *grid;
     std::unique_ptr<Algorithm> algorithm;
     std::vector<AlgorithmEntry> algorithm_entry;
 
     void RegisterAlgorithms();
+
     void SetDefaultColors()
     {
         primary_color = DEFAULT_PRIMARY_COLOR;
@@ -63,38 +75,51 @@ private:
         start_color = DEFAULT_MAZE_START_COLOR;
     }
 
-public:
-    float algo_step_delay;
-    int algo_start_delay;
-    int using_algorithm;
-
-    bool show_sidebar;
-    bool show_settings;
-
-    Color primary_color;
-    Color secondary_color;
-    Color start_color;
-
-    Point start;
-
-    Mazer() {}
-
-    Mazer(Grid *grid)
+    void Run()
     {
-        this->grid = grid;
-        algorithm_state = ALGO_STAL;
+        if(!start.valid) return;
 
-        algo_step_delay = DEFAULT_ALGO_STEP_DELAY;
-        algo_start_delay = DEFAULT_ALGO_START_DELAY;
-        
-        using_algorithm = 0;
+        algorithm = algorithm_entry[using_algorithm].create();
+        algorithm->primary_color = &primary_color;
+        algorithm->secondary_color = &secondary_color;
 
-        show_sidebar = true;
-        show_settings = false;
+        algorithm_state = ALGO_INIT;
+    }
 
-        SetDefaultColors();
-        
-        RegisterAlgorithms(); 
+    void PlaceStart(const Vector2i &where)
+    {
+        if(!start.valid)
+        {
+            start.position = where;
+            start.valid = true;
+
+            grid->graph[start.position.y][start.position.x] = Cell(start_color);
+        }
+    }
+
+    void RemoveStart(const Vector2i &where)
+    {
+        if(where == start.position) 
+        {
+            start.valid = false;
+            grid->graph[where.y][where.x] = Cell(CELL_ROOM);
+        }
+    }
+
+    void RandomStart()
+    {
+        Reset();
+        Vector2i random_position = Vector2i(rand() % grid->size.x, rand() % grid->size.y);
+        while (!start.valid)
+        {
+            random_position = Vector2i(rand() % grid->size.x, rand() % grid->size.y);
+            PlaceStart(random_position);
+        }
+    }
+
+    void InitSettingsWindow()
+    {
+
     }
 
     void SidebarWindow()
@@ -111,6 +136,8 @@ public:
 
         ImGui::Begin("Mazer", nullptr, flags);
 
+        ImGui::BeginDisabled(show_settings);
+
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if(ImGui::CollapsingHeader("Algorithms"))
         {
@@ -122,7 +149,6 @@ public:
 
                 if(offset + button_width > SIDEBAR_WIDTH) offset = 0;
                 else if(offset > 0) ImGui::SameLine();
-
 
                 ImGui::PushStyleColor(ImGuiCol_Button, 
                 (using_algorithm == i) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f)
@@ -137,19 +163,83 @@ public:
             }
         }
 
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if(ImGui::CollapsingHeader("Algorithm Settings"))
         {
             ImGui::Text("Start Delay");
+            if(ImGui::Button("|##1"))
+                algo_start_delay = 0;
+            
+            ImGui::SameLine();
             ImGui::SliderInt("##AlgoStartDelay", &algo_start_delay, 0, 5);
+            
             ImGui::SameLine();
             if(ImGui::Button("Default##1"))
                 algo_start_delay = DEFAULT_ALGO_START_DELAY;
 
             ImGui::Text("Step Delay");
+            if(ImGui::Button("|##2"))
+                algo_step_delay = 0;
+            
+            ImGui::SameLine();
             ImGui::SliderFloat("##AlgoStepDelay", &algo_step_delay, 0.0f, 0.2f);
+            
             ImGui::SameLine();
             if(ImGui::Button("Default##2"))
                 algo_step_delay = DEFAULT_ALGO_STEP_DELAY;
+        }
+
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if(ImGui::CollapsingHeader("Actions"))
+        {
+            bool running_algorithm = 
+            ( 
+                algorithm_state == ALGO_INIT || 
+                algorithm_state == ALGO_RUN || 
+                algorithm_state == ALGO_DONE
+            );
+
+            ImGui::BeginDisabled(running_algorithm);
+            ImGui::PushStyleColor(ImGuiCol_Button, 
+            (running_algorithm) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+            if(ImGui::Button("Start (Space)")) 
+                Run();
+            ImGui::PopStyleColor();
+            ImGui::EndDisabled();
+
+            ImGui::SameLine();
+            if(ImGui::Button("Reset (R)")) 
+                Reset();
+
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Button, (algo_pause) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImVec4(0.7f, 0.2f, 0.0f, 1.0f));
+            if(ImGui::Button(algo_pause ? "Play (P)" : "Pause (P)"))
+                algo_pause = !algo_pause;
+            ImGui::PopStyleColor();
+
+            if(ImGui::Button("Fill (F)")) 
+            {
+                grid->Fill(PLACE_WALL);
+                start.valid = false;
+            }
+            
+            ImGui::SameLine();
+            if(ImGui::Button("Clear (C)")) 
+            {
+                grid->Fill(PLACE_ROOM);
+                start.valid = false;
+            }
+
+            ImGui::BeginDisabled(running_algorithm);
+            if(ImGui::Button("Random Start"))
+                RandomStart();
+            ImGui::EndDisabled();
+            
+            if(ImGui::Button("Settings (LShift)"))
+            {
+                show_settings = true;
+                InitSettingsWindow();
+            }
         }
 
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
@@ -159,6 +249,7 @@ public:
             ImGui::TextWrapped(std::string("Description:\n" + algorithm_entry[using_algorithm].description).c_str());
         }
 
+        ImGui::EndDisabled();
         ImGui::End();
     }
 
@@ -171,7 +262,7 @@ public:
                                 ImGuiWindowFlags_NoCollapse;
                                 
         ImGui::SetNextWindowSize(ImVec2(700, 500), ImGuiCond_Always);
-        ImGui::Begin("Mazer Settings", nullptr, flags);
+        ImGui::Begin("Mazer Settings", &show_settings, flags);
 
         if(ImGui::IsKeyDown(ImGuiKey_Escape))
             show_settings = false;
@@ -200,53 +291,61 @@ public:
         ImGui::End();
     }
 
+public:
+    Color primary_color;
+    Color secondary_color;
+    Color start_color;
+
+    Mazer() {}
+
+    Mazer(Grid *grid)
+    {
+        this->grid = grid;
+        algorithm_state = ALGO_STAL;
+
+        algo_step_delay = DEFAULT_ALGO_STEP_DELAY;
+        algo_start_delay = DEFAULT_ALGO_START_DELAY;
+        
+        algo_pause = false;
+
+        using_algorithm = 0;
+
+        show_sidebar = true;
+        show_settings = false;
+
+        SetDefaultColors();
+        RegisterAlgorithms(); 
+    }
+    
     void UserInterface()
     {
         SidebarWindow();
         SettingsWindow();
     }
 
-    void Run()
+    void Start()
     {
-        if(!start.valid) return;
-
-        algorithm = algorithm_entry[using_algorithm].create();
-        algorithm->primary_color = &primary_color;
-        algorithm->secondary_color = &secondary_color;
-
-        algorithm_state = ALGO_INIT;
-    }
-
-    void PlaceStart(const Vector2i &where)
-    {
-        if(!start.valid)
-        {
-            start.position = where;
-            start.valid = true;
-
-            grid->graph[start.position.y][start.position.x] = Cell{ CELL_ROOM, &start_color };
-        }
-    }
-
-    void RemoveStart(const Vector2i &where)
-    {
-        if(where == start.position) 
-        {
-            start.valid = false;
-            grid->graph[where.y][where.x] = Cell{ CELL_ROOM, &grid->room_color };
-        }
+        show_sidebar = true;
+        show_settings = false;
     }
 
     void Update()
     {   
         if(IsKeyboardButtonDown(KEY_SHOW_STTINGS))
+        {
             show_settings = !show_settings;
+            if(show_settings)
+                InitSettingsWindow();
+        }
 
         if(show_settings) return;
 
         if(IsKeyboardButtonDown(KEY_HIDE_SIDEBAR))
             show_sidebar = !show_sidebar;
         
+        if(IsKeyboardButtonDown(KEY_PAUSE))
+            algo_pause = !algo_pause;
+
         if(IsKeyboardButtonDown(KEY_RESET))
             Reset();
 
@@ -275,6 +374,7 @@ public:
             start_timer = 0.0f;
             break;
         case ALGO_INIT:
+            if(algo_pause) return;
             if(!start.valid) return;
 
             start_timer += Timer::deltaTime;
@@ -287,6 +387,7 @@ public:
             algorithm_state = ALGO_RUN;
             break;
         case ALGO_RUN:
+            if(algo_pause) return;
             step_timer += Timer::deltaTime;
             if(step_timer < algo_step_delay) return;
 
@@ -298,6 +399,7 @@ public:
             step_timer = 0.0f;
             break;
         case ALGO_DONE:
+            if(algo_pause) return;
             start.valid = false;
             grid->Reset();
             algorithm_state = ALGO_STAL;
@@ -309,6 +411,7 @@ public:
 
     void Reset()
     {
+        algo_pause = false;
         start.valid = false;
         grid->Reset();
         algorithm_state = ALGO_STAL;

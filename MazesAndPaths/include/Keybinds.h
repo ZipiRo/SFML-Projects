@@ -9,5 +9,6 @@ Keyboard::Key KEY_PATH_SETUP = Keyboard::Key::W;
 Keyboard::Key KEY_MAZE_SETUP = Keyboard::Key::E;
 Keyboard::Key KEY_HIDE_SIDEBAR = Keyboard::Key::Tab;
 Keyboard::Key KEY_SHOW_STTINGS = Keyboard::Key::LShift;
-Keyboard::Key KEY_HIDE_INTERFACE = Keyboard::Key::I;
+Keyboard::Key KEY_HIDE_INTERFACE = Keyboard::Key::H;
 Keyboard::Key KEY_FILL_GRID = Keyboard::Key::F;
+Keyboard::Key KEY_PAUSE = Keyboard::Key::P;

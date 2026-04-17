@@ -60,12 +60,25 @@ private:
         }
     };
 
-    int algorithm_state;
-    float step_timer;
-    float start_timer;
     int path_index;
 
+    int algorithm_state;
+    int using_algorithm; 
+    
+    int algo_start_delay;
+    float algo_step_delay;
+    float path_step_delay;
+    
+    float step_timer;
+    float start_timer;
+
+    bool algo_pause;
+    bool show_sidebar;
+    bool show_settings;
+
     std::vector<Vector2i> path;
+
+    Point start, end;
     
     Grid *grid = nullptr;
     std::unique_ptr<Algorithm> algorithm;
@@ -82,45 +95,84 @@ private:
         start_color = DEFAULT_PATH_START_COLOR;
         end_color = DEFAULT_PATH_END_COLOR;
     }
-
-public: 
-    float algo_step_delay;
-    float path_step_delay; 
-    int algo_start_delay;
-    int using_algorithm;
-
-    bool show_sidebar;
-    bool show_settings;
-
-    Color visited_color;
-    Color frontier_color;
-    Color backtrack_color;
-    Color path_color;
-    Color start_color;
-    Color end_color;
-
-    Point start, end;
-
-    Pathfinder() {}
-
-    Pathfinder(Grid *grid)
+    
+    void Run()
     {
-        this->grid = grid;
-        algorithm_state = ALGO_STAL;
+        if(!start.valid || !end.valid) return;
 
-        algo_step_delay = DEFAULT_ALGO_STEP_DELAY;
-        path_step_delay = DEFAULT_PATH_STEP_DELAY;
-        algo_start_delay = DEFAULT_ALGO_START_DELAY;
+        algorithm = algorithm_entry[using_algorithm].create();
+        algorithm->visited_color = &visited_color;
+        algorithm->frontier_color = &frontier_color;
+        algorithm->backtrack_color = &backtrack_color;
         
-        using_algorithm = 0;
-
-        show_sidebar = true;
-        show_settings = false;
-
-        SetDefaultColors();
-        RegisterAlgorithms(); 
+        algorithm_state = ALGO_INIT;
     }
 
+    void PlacePoint(const Vector2i &where)
+    {
+        if(grid->graph[where.y][where.x].type != CELL_ROOM) return;
+
+        if(!start.valid)
+        {
+            start.position = where;
+            start.valid = true;
+
+            grid->graph[start.position.y][start.position.x] = Cell(start_color);
+        }
+        else if(!end.valid)
+        {
+            end.position = where;
+            end.valid = true;
+
+            grid->graph[end.position.y][end.position.x] = Cell(end_color);
+        }
+    }
+
+    void RemovePoint(const Vector2i &where)
+    {
+        bool removed = false;
+        if(where == start.position) 
+        {
+            start.valid = false;
+            removed = true;
+        }
+        else if(where == end.position) 
+        {
+            end.valid = false;
+            removed = true;
+        }
+
+        if(removed)
+            grid->graph[where.y][where.x] = Cell(CELL_ROOM);
+    }
+
+    void StepPath()
+    {
+        if(path_index >= path.size())
+            return;
+
+        float t = float(path_index) / path.size();
+
+        Vector2i point = path[path_index++];
+        grid->graph[point.y][point.x].color = &path_color;
+    }
+
+    void RandomStartEnd()
+    {
+        Reset();
+        Vector2i random_position = Vector2i(rand() % grid->size.x, rand() % grid->size.y);
+        while (!start.valid || !end.valid)
+        {
+            random_position = Vector2i(rand() % grid->size.x, rand() % grid->size.y);
+            PlacePoint(random_position);
+        }
+    }
+
+    void InitSettingsWindow()
+    {
+        
+    }
+    
     void SidebarWindow()
     {
         if(!show_sidebar) return;
@@ -134,6 +186,8 @@ public:
         ImGui::SetNextWindowSize(ImVec2(SIDEBAR_WIDTH, window_height), ImGuiCond_Always);
 
         ImGui::Begin("Pathfinder", nullptr, flags);
+
+        ImGui::BeginDisabled(show_settings);
 
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if(ImGui::CollapsingHeader("Algorithms"))
@@ -149,7 +203,7 @@ public:
 
 
                 ImGui::PushStyleColor(ImGuiCol_Button, 
-                (using_algorithm == i) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f)
+                    (using_algorithm == i) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f)
                                         : ImGui::GetStyleColorVec4(ImGuiCol_Button));
 
                 if(ImGui::Button(algorithm_entry[i].abbr.c_str(), ImVec2(button_width, 0)))
@@ -161,25 +215,79 @@ public:
             }
         }
 
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if(ImGui::CollapsingHeader("Algorithm Settings"))
         {
             ImGui::Text("Start Delay");
+            if(ImGui::Button("|##1"))
+                algo_start_delay = 0;
+
+            ImGui::SameLine();
             ImGui::SliderInt("##AlgoStartDelay", &algo_start_delay, 0, 5);
+            
             ImGui::SameLine();
             if(ImGui::Button("Default##1"))
                 algo_start_delay = DEFAULT_ALGO_START_DELAY;
-
             ImGui::Text("Step Delay");
+            if(ImGui::Button("|##2"))
+                algo_step_delay = 0.0f;
+            
+            ImGui::SameLine();
             ImGui::SliderFloat("##AlgoStepDelay", &algo_step_delay, 0.0f, 0.2f);
+            
             ImGui::SameLine();
             if(ImGui::Button("Default##2"))
                 algo_step_delay = DEFAULT_ALGO_STEP_DELAY;
-            
             ImGui::Text("Path Step Delay");
+            if(ImGui::Button("|##3"))
+                path_step_delay = 0.0f;
+            
+            ImGui::SameLine();
             ImGui::SliderFloat("##PathStepDelay", &path_step_delay, 0.0f, 0.2f);
+            
             ImGui::SameLine();
             if(ImGui::Button("Default##3"))
                 path_step_delay = DEFAULT_PATH_STEP_DELAY;
+        }
+
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if(ImGui::CollapsingHeader("Actions"))
+        {
+            bool running_algorithm = 
+            ( 
+                algorithm_state == ALGO_INIT || 
+                algorithm_state == ALGO_RUN || 
+                algorithm_state == ALGO_DONE
+            );
+
+            ImGui::BeginDisabled(running_algorithm);
+            ImGui::PushStyleColor(ImGuiCol_Button, 
+                    (running_algorithm) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+            if(ImGui::Button("Start (Space)")) 
+                Run();
+            ImGui::PopStyleColor();
+            ImGui::EndDisabled();
+
+            ImGui::SameLine();
+            if(ImGui::Button("Reset (R)")) 
+                Reset();
+
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Button, (algo_pause) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImVec4(0.7f, 0.2f, 0.0f, 1.0f));
+            if(ImGui::Button(algo_pause ? "Play (P)" : "Pause (P)"))
+                algo_pause = !algo_pause;
+            ImGui::PopStyleColor();
+
+            ImGui::BeginDisabled(running_algorithm);
+            if(ImGui::Button("Random Start & End"))
+                RandomStartEnd();
+            ImGui::EndDisabled();
+            
+            if(ImGui::Button("Settings (LShift)"))
+            {
+                show_settings = true;
+                InitSettingsWindow();
+            }
         }
 
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
@@ -189,6 +297,7 @@ public:
             ImGui::TextWrapped(std::string("Description:\n" + algorithm_entry[using_algorithm].description).c_str());
         }
 
+        ImGui::EndDisabled();
         ImGui::End();
     }
 
@@ -201,7 +310,7 @@ public:
                                 ImGuiWindowFlags_NoCollapse;
                                 
         ImGui::SetNextWindowSize(ImVec2(700, 500), ImGuiCond_Always);
-        ImGui::Begin("Pathfinder Settings", nullptr, flags);
+        ImGui::Begin("Pathfinder Settings", &show_settings, flags);
 
         if(ImGui::IsKeyDown(ImGuiKey_Escape))
             show_settings = false;
@@ -235,12 +344,41 @@ public:
             if(ImGui::ColorEdit4("End Color", (float*)&imgui_color))
                 end_color = ImColorToSFML(imgui_color);
 
-
             if(ImGui::Button("Set Defaults"))
                 SetDefaultColors();
         }
 
         ImGui::End();
+    }
+
+public: 
+    Color visited_color;
+    Color frontier_color;
+    Color backtrack_color;
+    Color path_color;
+    Color start_color;
+    Color end_color;
+
+    Pathfinder() {}
+
+    Pathfinder(Grid *grid)
+    {
+        this->grid = grid;
+        algorithm_state = ALGO_STAL;
+
+        algo_step_delay = DEFAULT_ALGO_STEP_DELAY;
+        path_step_delay = DEFAULT_PATH_STEP_DELAY;
+        algo_start_delay = DEFAULT_ALGO_START_DELAY;
+        
+        algo_pause = false;
+
+        using_algorithm = 0;
+
+        show_sidebar = true;
+        show_settings = false;
+
+        SetDefaultColors();
+        RegisterAlgorithms(); 
     }
 
     void UserInterface()
@@ -249,65 +387,28 @@ public:
         SettingsWindow();
     }
 
-    void Run()
+    void Start()
     {
-        if(!start.valid || !end.valid) return;
-
-        algorithm = algorithm_entry[using_algorithm].create();
-        algorithm->visited_color = &visited_color;
-        algorithm->frontier_color = &frontier_color;
-        algorithm->backtrack_color = &backtrack_color;
-        
-        algorithm_state = ALGO_INIT;
-    }
-
-    void PlacePoint(const Vector2i &where)
-    {
-        if(grid->graph[where.y][where.x].type != CELL_ROOM) return;
-
-        if(!start.valid)
-        {
-            start.position = where;
-            start.valid = true;
-
-            grid->graph[start.position.y][start.position.x].color = &start_color;
-        }
-        else if(!end.valid)
-        {
-            end.position = where;
-            end.valid = true;
-
-            grid->graph[end.position.y][end.position.x].color = &end_color;
-        }
-    }
-
-    void RemovePoint(const Vector2i &where)
-    {
-        bool removed = false;
-        if(where == start.position) 
-        {
-            start.valid = false;
-            removed = true;
-        }
-        else if(where == end.position) 
-        {
-            end.valid = false;
-            removed = true;
-        }
-
-        if(removed)
-            grid->graph[where.y][where.x] = Cell{ CELL_ROOM, &grid->room_color };
+        show_sidebar = true;
+        show_settings = false;
     }
 
     void Update()
     {
         if(IsKeyboardButtonDown(KEY_SHOW_STTINGS))
+        {
             show_settings = !show_settings;
+            if(show_settings)
+                InitSettingsWindow();
+        }
             
         if(show_settings) return;
         
         if(IsKeyboardButtonDown(KEY_HIDE_SIDEBAR))
             show_sidebar = !show_sidebar;
+        
+        if(IsKeyboardButtonDown(KEY_PAUSE))
+            algo_pause = !algo_pause;
 
         if(IsKeyboardButtonDown(KEY_RESET))
             Reset();
@@ -325,6 +426,7 @@ public:
             start_timer = 0.0f;
             break;
         case ALGO_INIT:
+            if(algo_pause) return;
             start_timer += Timer::deltaTime;
             if(start_timer < algo_start_delay) return;
 
@@ -336,6 +438,7 @@ public:
             algorithm_state = ALGO_RUN;
             break;
         case ALGO_RUN:
+            if(algo_pause) return;
             step_timer += Timer::deltaTime;
             if(step_timer < algo_step_delay) return;
 
@@ -353,6 +456,7 @@ public:
             step_timer = 0.0f;
             break;
         case ALGO_DONE:
+            if(algo_pause) return;
             step_timer += Timer::deltaTime;
             if(step_timer < path_step_delay) return;
 
@@ -372,19 +476,9 @@ public:
         }
     }
 
-    void StepPath()
-    {
-        if(path_index >= path.size())
-            return;
-
-        float t = float(path_index) / path.size();
-
-        Vector2i point = path[path_index++];
-        grid->graph[point.y][point.x].color = &path_color;
-    }
-
     void Reset()
     {
+        algo_pause = false;
         start.valid = false;
         end.valid = false;
         path_index = 0;
