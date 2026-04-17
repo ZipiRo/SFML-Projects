@@ -7,9 +7,9 @@ This are SFML projects I made.
 
 To use my build batch file (B.bat) you will need to change the SFML and MinGW path. 
 
-Otherwise it will not work, because SFML 3.0.2 uses a certain C++ compiler.
+Otherwise it will not work, because SFML uses a certain C++ compiler.
 
-You can get SFML from here: https://www.sfml-dev.org/download/sfml/3.0.2
+You can get SFML from here: https://www.sfml-dev.org/download
 
 There you can find the compiler needed for your certain SFML build.
 
