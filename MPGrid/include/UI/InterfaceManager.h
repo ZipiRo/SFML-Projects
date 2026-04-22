@@ -1,4 +1,4 @@
-#include "Interfaces/PopUpInterface.h"
+#include "Interfaces/PopupUI.h"
 
 class InterfaceManager
 {
@@ -75,9 +75,6 @@ private:
     {
         if(context.interface.save_grid_popup)
         {
-            PopupInterface::size_input[0] = context.grid.GetSize().x;
-            PopupInterface::size_input[1] = context.grid.GetSize().y;
-                
             CenteredPopUpBase
             (
                 "Save Grid",
@@ -110,6 +107,19 @@ private:
                 context.interface.resize_grid_popup, 
                 context, 
                 [&](ApplicationContext&) {return PopupInterface::ResizeGrid(context);}
+            );
+
+            return true;
+        }
+        
+        if(context.interface.themes_grid_popup)
+        {
+            CenteredPopUpBase
+            (
+                "Grid Themes",
+                context.interface.themes_grid_popup, 
+                context, 
+                [&](ApplicationContext&) {return PopupInterface::GridThemes(context);}
             );
 
             return true;
@@ -167,4 +177,4 @@ public:
     }
 };
 
-#include "Interfaces/MenubarInterface.h"
+#include "Interfaces/MenubarUI.h"

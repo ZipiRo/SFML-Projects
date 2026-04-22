@@ -1,35 +1,23 @@
 class Interface
 {
 private:
-    float menubar_height;
+    float menubar_height = 18;
     float sidebar_window_width;
 
     Vector2f settings_window_size;
     Vector2f settings_window_position;
 
 public:
-    bool show_sidebar_window;
-    bool show_settings_window;
-    bool show_popup;
-    bool hide_interface;
+    bool hide_interface = false;
+    bool show_popup = false;
 
-    bool load_grid_popup;
-    bool save_grid_popup;
-    bool resize_grid_popup;
+    bool show_sidebar_window = true;
+    bool show_settings_window = false;
 
-    Interface()
-    {
-        hide_interface = false;
-        show_sidebar_window = true;
-        show_settings_window = false;
-        show_popup = false;
-
-        load_grid_popup = false;
-        save_grid_popup = false;
-        resize_grid_popup = false;
-
-        menubar_height = 18;
-    }
+    bool load_grid_popup = false;
+    bool save_grid_popup = false;
+    bool resize_grid_popup = false;
+    bool themes_grid_popup = false;
 
     void SetSettingsWindow(Vector2f position, Vector2f size)
     {

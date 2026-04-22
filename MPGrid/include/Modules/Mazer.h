@@ -12,7 +12,7 @@ private:
     Point start;
 
     std::unique_ptr<MazeAlgorithm> algorithm;
-    std::vector<MazeAlgorithmEntry> algorithms;
+    const std::vector<MazeAlgorithmEntry> algorithms = GetMazeAlgorithms();
 
     bool pause_algorithm;
     bool running_algorithm;
@@ -32,14 +32,14 @@ private:
     void SidebarInterface(ApplicationContext&) override;
     void SettingsInterface(ApplicationContext&) override;
 
-    void PlaceStart(Vector2i where, Grid &grid, const GridColorTheme &theme)
+    void PlaceStart(Vector2i where, Grid &grid, GridTheme theme)
     {
         if(!start.valid)
         {
             start.position = where;
             start.valid = true;
 
-            grid.SetCell(where.x, where.y, CELL_NONE, theme.maze_start_color);
+            grid.SetCell(where.x, where.y, CELL_NONE, theme.colors[MazeStartColor]);
         }
     }
 
@@ -52,7 +52,7 @@ private:
         }
     }
 
-    void RandomStart(Grid &grid, const GridColorTheme &theme)
+    void RandomStart(Grid &grid, GridTheme theme)
     {
         Vector2i random_position = Vector2i(rand() % grid.GetSize().x, rand() % grid.GetSize().y);
         while (!start.valid)
@@ -71,15 +71,15 @@ private:
         reset_grid = true;
     }
 
-    void Run(const GridColorTheme &theme)
+    void Run(GridTheme theme)
     {
         if(!start.valid) return;
         running_algorithm = true;
         start_timer = 0.0f;
 
         algorithm = algorithms[using_algorithm].Get();
-        algorithm->primary_color = theme.maze_primary_color;
-        algorithm->secondary_color = theme.maze_secondary_color;
+        algorithm->primary_color = theme.colors[MazePrimaryColor];
+        algorithm->secondary_color = theme.colors[MazeSecondaryColor];
 
         algorithm_state = ALGO_INIT;
     }
@@ -107,8 +107,6 @@ public:
         start_algo_delay = 3;
 
         no_step_algorithm = false;
-
-        algorithms = GetMazeAlgorithms();
     }
 
     void Init(ApplicationContext &context) override
@@ -117,10 +115,7 @@ public:
     }
 
     void Update(ApplicationContext &context) override
-    {
-        if(context.interface.show_settings_window || 
-            context.interface.show_popup) return;
-        
+    {   
         if(Input::IsKeyDown(Keyboard::Key::R))
             Reset();
 

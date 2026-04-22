@@ -1,16 +1,19 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <cmath>
 #include <functional>
 #include <stack>
 #include <queue>
 #include <algorithm>
+#include <map>
+#include <filesystem>
 
 #include "ApplicationBase.h"
 #include "Utils.h"
 
 #include "Grid/Grid.h"
-#include "Grid/GridColorTheme.h"
+#include "Grid/GridTheme.h"
 #include "Grid/GridRenderer.h"
 #include "Grid/GridCursor.h"
 
@@ -70,7 +73,7 @@ void Application::Start()
     window.setFramerateLimit(99999);
     background = Color::Black;
 
-    grid.Create(100, 100);
+    grid.Create(20, 20);
 
     Vector2f cell_size(float(window.getSize().y - 50) / grid.GetSize().x, float(window.getSize().y - 50) / grid.GetSize().y);
 
@@ -90,25 +93,30 @@ void Application::Update(float delta_time)
 {
     context.delta_time = delta_time;
 
-    if(Input::IsKeyDown(Keyboard::Key::Num1))
-    {
-        active_module = &topo;
-        active_module->Init(context);
-    }
-    else if(Input::IsKeyDown(Keyboard::Key::Num2))
-    {
-        active_module = &pathfinder;
-        active_module->Init(context);
-    }
-    else if(Input::IsKeyDown(Keyboard::Key::Num3))
-    {
-        active_module = &mazer;
-        active_module->Init(context);
-    }
-    
-    active_module->Update(context);
-    grid_render.Update(grid);
     UIManager.Update(context, *active_module);
+
+    if(!(interface.show_settings_window || interface.show_popup))
+    {
+        if(Input::IsKeyDown(Keyboard::Key::Num1))
+        {
+            active_module = &topo;
+            active_module->Init(context);
+        }
+        else if(Input::IsKeyDown(Keyboard::Key::Num2))
+        {
+            active_module = &pathfinder;
+            active_module->Init(context);
+        }
+        else if(Input::IsKeyDown(Keyboard::Key::Num3))
+        {
+            active_module = &mazer;
+            active_module->Init(context);
+        }
+
+        active_module->Update(context);
+    }
+
+    grid_render.Update(grid);
 }
 
 void Application::Draw()

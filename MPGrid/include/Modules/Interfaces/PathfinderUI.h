@@ -86,9 +86,7 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
         ImGui::EndDisabled();
         
         if(ImGui::Button("Settings (LShift)"))
-        {
             context.interface.show_settings_window = true;
-        }
     }
 
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);

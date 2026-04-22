@@ -14,7 +14,7 @@ private:
     std::vector<Vector2i> path;
 
     std::unique_ptr<PathAlgorithm> algorithm;
-    std::vector<PathAlgoithmEntry> algorithms;
+    const std::vector<PathAlgoithmEntry> algorithms = GetPathAlgorithms();
 
     bool pause_algorithm;
     bool running_algorithm;
@@ -37,7 +37,7 @@ private:
     void SidebarInterface(ApplicationContext&) override;
     void SettingsInterface(ApplicationContext&) override;
 
-    void Place(Vector2i where, Grid &grid, const GridColorTheme &theme)
+    void Place(Vector2i where, Grid &grid, GridTheme theme)
     {
         if(grid.Get(where.x, where.y).type != CELL_ROOM) return;
 
@@ -46,14 +46,14 @@ private:
             start.position = where;
             start.valid = true;
 
-            grid.SetCell(where.x, where.y, CELL_NONE, theme.path_start_color);
+            grid.SetCell(where.x, where.y, CELL_NONE, theme.colors[PathStartColor]);
         }
         else if(!end.valid)
         {
             end.position = where;
             end.valid = true;
 
-            grid.SetCell(where.x, where.y, CELL_NONE, theme.path_end_color);
+            grid.SetCell(where.x, where.y, CELL_NONE, theme.colors[PathEndColor]);
         }
     }
 
@@ -71,7 +71,7 @@ private:
         }
     }
 
-    void RandomStartEnd(Grid &grid, const GridColorTheme &theme)
+    void RandomStartEnd(Grid &grid, GridTheme theme)
     {
         Vector2i random_position = Vector2i(rand() % grid.GetSize().x, rand() % grid.GetSize().y);
         while (!start.valid || !end.valid)
@@ -91,7 +91,7 @@ private:
         reset_grid = true;
     }
 
-    void StepPath(Grid &grid, const GridColorTheme &theme)
+    void StepPath(Grid &grid, GridTheme theme)
     {
         if(path_index >= path.size()) 
         {
@@ -100,30 +100,30 @@ private:
         }
 
         Vector2i point = path[path_index++];
-        grid.SetCell(point.x, point.y, CELL_NONE, theme.path_color);
+        grid.SetCell(point.x, point.y, CELL_NONE, theme.colors[PathColor]);
     }
 
-    void DirectPath(Grid &grid, const GridColorTheme &theme)
+    void DirectPath(Grid &grid, GridTheme theme)
     {
         while (path_index < path.size())
         {
             Vector2i point = path[path_index++];
-            grid.SetCell(point.x, point.y, CELL_NONE, theme.path_color);
+            grid.SetCell(point.x, point.y, CELL_NONE, theme.colors[PathColor]);
         }
 
         algorithm_state = ALGO_STAL;
     }
 
-    void Run(const GridColorTheme &theme)
+    void Run(GridTheme theme)
     {
         if(!start.valid || !end.valid) return;
         running_algorithm = true;
         start_timer = 0.0f;
 
         algorithm = algorithms[using_algorithm].Get();
-        algorithm->explored_color = theme.path_explored_color;
-        algorithm->frontier_color = theme.path_frontier_color;
-        algorithm->backtrack_color = theme.path_backtrack_color;
+        algorithm->explored_color = theme.colors[PathExploredColor];
+        algorithm->frontier_color = theme.colors[PathFrontierColor];
+        algorithm->backtrack_color = theme.colors[PathBacktrackColor];
 
         algorithm_state = ALGO_INIT;
     }
@@ -154,8 +154,6 @@ public:
 
         no_step_algorithm = false;
         no_step_path = false;
-
-        algorithms = GetPathAlgorithms();
     }
 
     void Init(ApplicationContext &context) override
@@ -165,9 +163,6 @@ public:
 
     void Update(ApplicationContext &context) override
     {   
-        if(context.interface.show_settings_window || 
-            context.interface.show_popup) return;
-
         if(Input::IsKeyDown(Keyboard::Key::R))
             Reset();
 
@@ -232,13 +227,19 @@ void Pathfinder::AlgorithmUpdate(ApplicationContext &context)
         if(algorithm->path_found)
         {
             context.grid.ClearColors();
-            context.grid.SetCell(start.position.x, start.position.y, CELL_NONE, context.grid_render.GetColorTheme().path_start_color);
-            context.grid.SetCell(end.position.x, end.position.y, CELL_NONE, context.grid_render.GetColorTheme().path_end_color);
+            context.grid.SetCell(start.position.x, start.position.y, CELL_NONE, context.grid_render.GetColorTheme().colors[PathStartColor]);
+            context.grid.SetCell(end.position.x, end.position.y, CELL_NONE, context.grid_render.GetColorTheme().colors[PathEndColor]);
             path = algorithm->ConstructPath();
             algorithm_state = ALGO_PATH_FOUND;
         }
         else if(algorithm->done)
+        {
             algorithm_state = ALGO_STAL;
+            path_index = 0;
+            running_algorithm = false;
+            start.valid = false;
+            end.valid = false;
+        }
 
         step_timer = 0.0f;
         break;
@@ -246,7 +247,7 @@ void Pathfinder::AlgorithmUpdate(ApplicationContext &context)
         step_timer += context.delta_time;
         if(step_timer < path_step_delay) return;
 
-        no_step_path ? DirectPath(context.grid, context.grid_render.GetColorTheme()) : 
+        no_step_path ? DirectPath(context.grid, context.grid_render.GetColorTheme()): 
                         StepPath(context.grid, context.grid_render.GetColorTheme());
 
         if(algorithm_state == ALGO_STAL)
