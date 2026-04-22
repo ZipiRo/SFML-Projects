@@ -24,7 +24,7 @@ public:
             done = false;
         }
 
-        virtual void Init(const Grid &grid, const Vector2i &start, const Vector2i &end) = 0;
+        virtual void Init(const Grid &grid, const Vector2i &start, const Vector2i &end) = 0;    
         virtual void Step(Grid &grid) = 0;
         virtual std::vector<Vector2i> ConstructPath() = 0;
     };
