@@ -5,7 +5,9 @@ class InterfaceManager
 private:
     Vector2f grid_offset;
 
-    void Menubar(ApplicationContext &context);
+    void Menubar(ApplicationContext&);
+    void Bottombar(ApplicationContext&);
+    void Modulesbar(ApplicationContext&);
 
     void SidebarWindowBase(std::string title, ApplicationContext &context, std::function<void(ApplicationContext&)> Interface)
     {
@@ -17,7 +19,7 @@ private:
         
 
         ImGui::SetNextWindowPos(ImVec2(window_size.x - context.interface.GetSidebarWidth(), context.interface.GetMenubarHeight()), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(context.interface.GetSidebarWidth(), window_size.y), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(context.interface.GetSidebarWidth(), window_size.y - context.interface.GetMenubarHeight() * 2), ImGuiCond_Always);
 
         ImGui::Begin(title.c_str(), nullptr, flags);
 
@@ -136,6 +138,9 @@ private:
         if(Input::IsKeyDown(Keyboard::Key::LShift))
             context.interface.show_settings_window = !context.interface.show_settings_window;
 
+        if(context.interface.show_modules_bar)
+            Modulesbar(context);
+
         if(context.interface.show_sidebar_window) 
         {
             SidebarWindowBase(active.GetSidebarTitle(), context, [&](ApplicationContext&){return active.SidebarInterface(context);});
@@ -169,8 +174,9 @@ public:
         }
         
         Menubar(context);
+        Bottombar(context);
         
-        grid_offset.y = context.interface.GetMenubarHeight();
+        grid_offset.y = 0;
 
         UpdateToolUI(context, active);
         context.grid_render.SetOffset(grid_offset);
@@ -178,3 +184,5 @@ public:
 };
 
 #include "Interfaces/MenubarUI.h"
+#include "Interfaces/BottombarUI.h"
+#include "Interfaces/ModulesbarUI.h"

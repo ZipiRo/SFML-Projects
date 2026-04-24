@@ -2,11 +2,12 @@ namespace PopupInterface
 {
     bool lock_size_input = false;
     int size_input[2] = {};
+    std::vector<std::string> files;
     char savefile_input[100];
 
     void SaveGrid(ApplicationContext &context)
     {        
-        ImGui::SetWindowSize(ImVec2(335, 80), ImGuiCond_Always);
+        ImGui::SetWindowSize(ImVec2(335, 300), ImGuiCond_Always);
 
         ImGui::Text(std::string("File Name (" + GridSaveFileExt + ')').c_str());
         ImGui::InputText("##FileName ", savefile_input, 100);
@@ -17,11 +18,24 @@ namespace PopupInterface
             context.grid.Save(savefile_input);
             context.interface.save_grid_popup = false;
         }
+
+        ImGui::Text(std::string(GridSaveFileDir).c_str());
+        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::GetStyle().ItemSpacing.x - ImGui::CalcTextSize("Refresh").x - 10);
+        if(ImGui::Button("Refresh"))
+            files = GetStrFilesFrom(GridSaveFileDir, GridSaveFileExt);
+
+        ImGui::BeginChild("FileList", ImVec2(0, -1), true);
+        for(auto &file : files)
+        {
+            if(ImGui::Selectable(file.c_str()))
+                strcpy(savefile_input, file.c_str());
+        }
+        ImGui::EndChild();
     }   
 
     void LoadGrid(ApplicationContext &context)
     {
-        ImGui::SetWindowSize(ImVec2(335, 80), ImGuiCond_Always);
+        ImGui::SetWindowSize(ImVec2(335, 300), ImGuiCond_Always);
         
         ImGui::Text(std::string("File Name (" + GridSaveFileExt + ')').c_str());
         ImGui::InputText("##FileName", savefile_input, 100);
@@ -30,12 +44,31 @@ namespace PopupInterface
             !std::string(savefile_input).empty())
         {
             if(!context.grid.Load(savefile_input)) return;
-
-            Vector2f cell_size(float(context.window.getSize().y - 50) / context.grid.GetSize().x, float(context.window.getSize().y - 50) / context.grid.GetSize().y);
-            context.grid_render.Build(cell_size, context.grid.GetSize());
-            context.grid_cursor.Init(cell_size);
-            context.interface.load_grid_popup = false;
+            context.grid_render.Build(context.grid.GetSize());
+            context.grid_cursor.Init(context.grid_render.GetCellSize());
+            context.interface.load_grid_popup = false;       
         }
+
+        ImGui::Text(std::string(GridSaveFileDir).c_str());
+        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::GetStyle().ItemSpacing.x - ImGui::CalcTextSize("Refresh").x - 10);
+        if(ImGui::Button("Refresh"))
+            files = GetStrFilesFrom(GridSaveFileDir, GridSaveFileExt);
+
+        ImGui::BeginChild("FileList", ImVec2(0, -1), true);
+        for(auto &file : files)
+        {
+            if(ImGui::Selectable(file.c_str()))
+                strcpy(savefile_input, file.c_str());
+
+            if(ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+            {   
+                if(!context.grid.Load(savefile_input)) return;
+                context.grid_render.Build(context.grid.GetSize());
+                context.grid_cursor.Init(context.grid_render.GetCellSize());
+                context.interface.load_grid_popup = false;     
+            }
+        }
+        ImGui::EndChild();
     }   
     
     void ResizeGrid(ApplicationContext &context)
@@ -73,9 +106,8 @@ namespace PopupInterface
         if((ImGui::Button("Apply (Enter)") || ImGui::IsKeyDown(ImGuiKey_Enter)) && changes)
         {
             context.grid.Create(size_input[0], size_input[1]);
-            Vector2f cell_size(float(context.window.getSize().y - 50) / context.grid.GetSize().x, float(context.window.getSize().y - 50) / context.grid.GetSize().y);
-            context.grid_render.Build(cell_size, context.grid.GetSize());
-            context.grid_cursor.Init(cell_size);
+            context.grid_render.Build(context.grid.GetSize());
+            context.grid_cursor.Init(context.grid_render.GetCellSize());
             context.interface.resize_grid_popup = false;
         }
     }  

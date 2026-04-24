@@ -32,6 +32,12 @@ private:
     Vector2i size;
 
 public: 
+    Grid()
+    { 
+        if(!std::filesystem::exists(GridSaveFileDir))
+            std::filesystem::create_directory(GridSaveFileDir);
+    }
+
     void Create(int cols, int rows)
     {
         size = Vector2i(cols, rows);
@@ -88,11 +94,13 @@ public:
 
 void Grid::Save(std::string file_name)
 {
-    if(!std::filesystem::is_directory(GridSaveFileDir))
-        std::filesystem::create_directory(GridSaveFileDir);
+    std::filesystem::path file = std::filesystem::path(GridSaveFileDir) / file_name;
+    std::string extension = file.extension().string();
 
-    std::string file = GridSaveFileDir + '\\' + file_name + GridSaveFileExt;
-    std::ofstream FILE(file);
+    if(file.extension().empty() || extension == ".")
+        file += GridSaveFileExt;
+
+    std::ofstream FILE(file.string());
 
     if(!FILE) return;
 
@@ -114,11 +122,13 @@ void Grid::Save(std::string file_name)
 
 bool Grid::Load(std::string file_name)
 {
-    std::string file = GridSaveFileDir + "\\" + file_name;
-    if(file_name.find(GridSaveFileExt) == std::string::npos)
-        file += GridSaveFileExt;
+    std::filesystem::path file = std::filesystem::path(GridSaveFileDir) / file_name;
+    std::string extension = file.extension().string();
 
-    std::ifstream FILE(file);
+    if(file.extension().empty() || extension == ".")
+        file += GridSaveFileExt;
+ 
+    std::ifstream FILE(file.string());
 
     char mark[10]; 
     FILE.getline(mark, 10);

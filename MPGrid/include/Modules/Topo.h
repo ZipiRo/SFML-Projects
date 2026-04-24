@@ -31,8 +31,17 @@ private:
         return "Topo Settings";
     }
 
+    void BrushTool(Vector2i where, CellType type, Grid &grid)
+    {
+        if(grid.Get(where.x, where.y).type == type) return;
+        grid.SetCell(where.x, where.y, type);
+        SoundPlayer::Play(ResourceManager::Sounds.Get("Place"));
+    }
+
     void BucketTool(Vector2i where, CellType type, Grid &grid)
     {
+        if(grid.Get(where.x, where.y).type == type) return;
+
         std::queue<Vector2i> queue;
         std::vector<std::vector<bool>> visited;
         visited.assign(grid.GetSize().y, std::vector<bool>(grid.GetSize().x));
@@ -62,6 +71,8 @@ private:
                 }
             }
         }
+
+        SoundPlayer::Play(ResourceManager::Sounds.Get("Place"));
     }
     
     void RectangleDraw(Vector2f start, Vector2f end, CellType type, ApplicationContext &context)
@@ -120,6 +131,7 @@ private:
                 RectangleDraw(drag_start, drag_end, rect_tool_type, context);
                 rect_tool_shape.setSize(Vector2f(0, 0));
                 rect_tool_holding = false;
+                SoundPlayer::Play(ResourceManager::Sounds.Get("Place"));
             }
         }
     }
@@ -145,20 +157,20 @@ public:
         {
         case BRUSH:
             if(Input::IsMouseButton(Mouse::Button::Left) && cursor.valid)
-                context.grid.SetCell(cursor.position.x, cursor.position.y, CELL_WALL);
+                BrushTool(cursor.position, CELL_WALL, context.grid);
             
-            if(Input::IsMouseButton(Mouse::Button::Right) && cursor.valid)
-                context.grid.SetCell(cursor.position.x, cursor.position.y, CELL_ROOM);
+            else if(Input::IsMouseButton(Mouse::Button::Right) && cursor.valid)
+                BrushTool(cursor.position, CELL_ROOM, context.grid);
             break;
         case BUCKET:
             if(Input::IsMouseButtonDown(Mouse::Button::Left) && cursor.valid)
                 BucketTool(cursor.position, CELL_WALL, context.grid);
 
-            if(Input::IsMouseButtonDown(Mouse::Button::Right) && cursor.valid)
+            else if(Input::IsMouseButtonDown(Mouse::Button::Right) && cursor.valid)
                 BucketTool(cursor.position, CELL_ROOM, context.grid);
             break;
         case RECTANGLE:
-            if(Input::IsMouseButtonDown(Mouse::Button::Left) && cursor.valid)
+            if(Input::IsMouseButtonDown(Mouse::Button::Left) && cursor.valid && !rect_tool_holding)
                 StartRectangleTool
                 (
                     mouse_position, 
@@ -167,7 +179,7 @@ public:
                     Mouse::Button::Left
                 );
 
-            if(Input::IsMouseButtonDown(Mouse::Button::Right) && cursor.valid)
+            else if(Input::IsMouseButtonDown(Mouse::Button::Right) && cursor.valid && !rect_tool_holding)
                 StartRectangleTool
                 (
                     mouse_position, 
@@ -211,4 +223,50 @@ public:
     }
 };
 
-#include "Interfaces/TopoUI.h"
+void Topo::SidebarInterface(ApplicationContext& context)
+{
+    ImGui::BeginDisabled(context.interface.show_settings_window);
+
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if(ImGui::CollapsingHeader("Tools"))
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, 
+                (using_tool == BRUSH) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+        if(ImGui::Button("Brush (B)")) using_tool = BRUSH;
+        ImGui::PopStyleColor();
+
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, 
+                (using_tool == BUCKET) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+        if(ImGui::Button("Bucket (G)")) using_tool = BUCKET;
+        ImGui::PopStyleColor();
+
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, 
+                (using_tool == RECTANGLE) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+        if(ImGui::Button("Rectangle (S)")) using_tool = RECTANGLE;
+        ImGui::PopStyleColor();
+    }
+
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if(ImGui::CollapsingHeader("Actions"))
+    {
+        if(ImGui::Button("Reset (R)")) context.grid.ClearColors();
+
+        ImGui::SameLine();
+        if(ImGui::Button("Fill (F)")) context.grid.Fill(CELL_WALL);
+        
+        ImGui::SameLine();
+        if(ImGui::Button("Clear (C)")) context.grid.Fill(CELL_ROOM);
+        
+        if(ImGui::Button("Settings (LShift)"))
+            context.interface.show_settings_window = true;
+    }
+    
+    ImGui::EndDisabled();
+}
+
+void Topo::SettingsInterface(ApplicationContext& context)
+{
+    
+}

@@ -8,6 +8,7 @@ private:
     Vector2f cell_size;
     Vector2f position;
     Vector2f length;
+    Vector2f max_length;
     Vector2f offset;
 
     GridTheme current_theme;
@@ -44,6 +45,11 @@ public:
     void SetPosition(Vector2f position)
     {
         this->position = position;
+    }
+
+    void SetMaxLength(Vector2f length)
+    {
+        max_length = length;
     }
 
     Vector2f GetOffsetPosition() const
@@ -99,10 +105,10 @@ public:
         return point;
     }
 
-    void Build(Vector2f cell_size, Vector2i size)
+    void Build(Vector2i size)
     {
-        this->cell_size = cell_size;
         this->size = size;
+        cell_size = Vector2f(max_length.x / (float)size.x, max_length.y / (float)size.y);
 
         length = Vector2f(cell_size.x * size.x, cell_size.y * size.y);
 

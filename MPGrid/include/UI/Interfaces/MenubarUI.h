@@ -20,6 +20,7 @@ namespace MenubarInterface
             if (ImGui::MenuItem("Save"))
             {
                 PopupInterface::savefile_input[0] = '\0';
+                PopupInterface::files = GetStrFilesFrom(GridSaveFileDir, GridSaveFileExt);
 
                 context.interface.save_grid_popup = true;
             }
@@ -27,7 +28,8 @@ namespace MenubarInterface
             if (ImGui::MenuItem("Load"))
             {
                 PopupInterface::savefile_input[0] = '\0';
-                
+                PopupInterface::files = GetStrFilesFrom(GridSaveFileDir, GridSaveFileExt);
+
                 context.interface.load_grid_popup = true;
             }
 
