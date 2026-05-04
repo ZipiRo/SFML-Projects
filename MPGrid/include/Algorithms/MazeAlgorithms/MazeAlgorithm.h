@@ -15,6 +15,7 @@ struct MazeAlgorithmEntry
     std::string abbr;
     std::string name;
     std::string desc;
+    std::string rules;
     std::function<std::unique_ptr<MazeAlgorithm>()> Get;
 };
 
@@ -30,6 +31,7 @@ std::vector<MazeAlgorithmEntry> GetMazeAlgorithms()
     algorithm_entry.abbr = RB::abbr;
     algorithm_entry.name = RB::name;
     algorithm_entry.desc = RB::desc;
+    algorithm_entry.rules = RB::rules;
     algorithm_entry.Get = [](){ return std::make_unique<RB>(); };
 
     algorithms.push_back(algorithm_entry);
@@ -37,6 +39,7 @@ std::vector<MazeAlgorithmEntry> GetMazeAlgorithms()
     algorithm_entry.abbr = RD::abbr;
     algorithm_entry.name = RD::name;
     algorithm_entry.desc = RD::desc;
+    algorithm_entry.rules = RD::rules;
     algorithm_entry.Get = [](){ return std::make_unique<RD>(); };
 
     algorithms.push_back(algorithm_entry);
@@ -44,6 +47,7 @@ std::vector<MazeAlgorithmEntry> GetMazeAlgorithms()
     algorithm_entry.abbr = Prim::abbr;
     algorithm_entry.name = Prim::name;
     algorithm_entry.desc = Prim::desc;
+    algorithm_entry.rules = Prim::rules;
     algorithm_entry.Get = [](){ return std::make_unique<Prim>(); };
 
     algorithms.push_back(algorithm_entry);

@@ -44,6 +44,7 @@ public:
     static std::string abbr;
     static std::string name;
     static std::string desc;
+    static std::string rules;
 
     Prim() {}
 
@@ -90,4 +91,5 @@ public:
 
 std::string Prim::abbr = "Prim";
 std::string Prim::name = "Prim";
-std::string Prim::desc = "Prim’s algorithm (Prim) is a method for building a maze by starting from a cell and gradually expanding outward, always choosing the next cell through the smallest available connection until the whole area is connected.";
+std::string Prim::desc = "Prim's algorithm (Prim) is a method for building a maze by starting from a cell and gradually expanding outward, always choosing the next cell through the smallest available connection until the whole area is connected.";
+std::string Prim::rules = "1.Use a filled grid (all walls) for the algorithm to work";

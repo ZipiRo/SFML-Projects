@@ -26,6 +26,7 @@ public:
     static std::string abbr;
     static std::string name;
     static std::string desc;
+    static std::string rules;
 
     RB() {}
 
@@ -76,3 +77,4 @@ public:
 std::string RB::abbr = "RB";
 std::string RB::name = "Recursive Backtrack";
 std::string RB::desc = "Recursive Backtracker (RB) is a depth-first maze generation algorithm that moves forward through random unvisited neighbors, carving paths, and backtracks when it hits a dead end until all cells are visited.";
+std::string RB::rules = "1.Use a filled grid (all walls) for the algorithm to work";

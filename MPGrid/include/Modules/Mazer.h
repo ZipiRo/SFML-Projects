@@ -320,6 +320,7 @@ void Mazer::SidebarInterface(ApplicationContext& context)
     {
         ImGui::Text(std::string("Name:\n" + algorithms[using_algorithm].name).c_str());
         ImGui::TextWrapped(std::string("Description:\n" + algorithms[using_algorithm].desc).c_str());
+        ImGui::TextWrapped(std::string("Rules:\n" + algorithms[using_algorithm].rules).c_str());
     }
 
     ImGui::EndDisabled();

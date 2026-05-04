@@ -14,6 +14,7 @@ public:
     static std::string abbr;
     static std::string name;
     static std::string desc;
+    static std::string rules;
 
     RD() {}
 
@@ -94,3 +95,4 @@ public:
 std::string RD::abbr = "RD";
 std::string RD::name = "Recursive Division";
 std::string RD::desc = "Recursive Division (RD) is a maze generation algorithm that repeatedly splits an area with walls, places a single passage through each wall, and recursively applies the same process to the resulting sub-sections until the maze is fully partitioned.";
+std::string RD::rules = "1.Use a clear grid (no walls) for the algorithm to work";
