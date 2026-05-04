@@ -18,6 +18,8 @@ void InterfaceManager::Modulesbar(ApplicationContext &context)
     if(ImGui::ImageButton("Topo", ResourceManager::Textures.Get("Map"), Vector2f(20, 20))) context.SetModule(0);
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
+    if(ImGui::IsItemHovered())
+        ImGui::SetTooltip("A kind of paint but you draw and erase walls");
     ImGui::SameLine(-1, 11.5f);
     ImGui::Text("1");
     
@@ -27,6 +29,8 @@ void InterfaceManager::Modulesbar(ApplicationContext &context)
     if(ImGui::ImageButton("Path", ResourceManager::Textures.Get("Path"), Vector2f(20, 20))) context.SetModule(1);
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
+    if(ImGui::IsItemHovered())
+        ImGui::SetTooltip("Use pathfinding algorithms to solve mazes or your own topografy");
     ImGui::SameLine(-1, 11.5f);
     ImGui::Text("2");
 
@@ -36,6 +40,8 @@ void InterfaceManager::Modulesbar(ApplicationContext &context)
     if(ImGui::ImageButton("Maze", ResourceManager::Textures.Get("Maze"), Vector2f(20, 20))) context.SetModule(2);
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
+    if(ImGui::IsItemHovered())
+        ImGui::SetTooltip("Use maze generator algorithms to generate mazes and solve them after");
     ImGui::SameLine(-1, 11.5f);
     ImGui::Text("3");
 

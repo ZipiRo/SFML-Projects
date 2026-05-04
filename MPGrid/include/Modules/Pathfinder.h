@@ -37,7 +37,7 @@ private:
     void SidebarInterface(ApplicationContext&) override;
     void SettingsInterface(ApplicationContext&) override;
 
-    void Place(Vector2i where, Grid &grid, GridTheme theme)
+    void Place(Vector2i where, Grid &grid, GridColorTheme theme)
     {
         if(grid.Get(where.x, where.y).type != CELL_ROOM) return;
 
@@ -71,7 +71,7 @@ private:
         }
     }
 
-    void RandomStartEnd(Grid &grid, GridTheme theme)
+    void RandomStartEnd(Grid &grid, GridColorTheme theme)
     {
         Vector2i random_position = Vector2i(rand() % grid.GetSize().x, rand() % grid.GetSize().y);
         while (!start.valid || !end.valid)
@@ -92,7 +92,7 @@ private:
         reset_grid = true;
     }
 
-    void StepPath(Grid &grid, GridTheme theme)
+    void StepPath(Grid &grid, GridColorTheme theme)
     {
         if(path_index >= path.size()) 
         {
@@ -104,7 +104,7 @@ private:
         grid.SetCell(point.x, point.y, CELL_NONE, theme.colors[PathColor]);
     }
 
-    void DirectPath(Grid &grid, GridTheme theme)
+    void DirectPath(Grid &grid, GridColorTheme theme)
     {
         while (path_index < path.size())
         {
@@ -115,7 +115,7 @@ private:
         algorithm_state = ALGO_STAL;
     }
 
-    void Run(GridTheme theme)
+    void Run(GridColorTheme theme)
     {
         if(!start.valid || !end.valid) return;
         running_algorithm = true;
@@ -151,7 +151,7 @@ public:
 
         algo_step_delay = 0.05f;
         path_step_delay = 0.05f;
-        start_algo_delay = 3;
+        start_algo_delay = 0;
 
         no_step_algorithm = false;
         no_step_path = false;
@@ -271,7 +271,7 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
     ImGui::BeginDisabled(context.interface.show_settings_window);
 
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-    if(ImGui::CollapsingHeader("Algorithms"))
+    if(ImGui::CollapsingHeader("Algorithms (Ctrl + Wheel)"))
     {
         ImGui::BeginDisabled(running_algorithm);
         float offset = 0;
@@ -290,6 +290,9 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
 
             if(ImGui::Button(algorithms[i].abbr.c_str(), ImVec2(button_width, 0)))
                 using_algorithm = i;
+
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Pathfinding algorithm");
             
             ImGui::PopStyleColor();
             
@@ -306,6 +309,8 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
             start_algo_delay = 0;
         ImGui::SameLine();
         ImGui::SliderInt("##AlgoStartDelay", &start_algo_delay, 0, 5);
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Set the dealy to start the algorithm");
         ImGui::SameLine();
         if(ImGui::Button("Default##1")) start_algo_delay = 3;
 
@@ -313,6 +318,8 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
         if(ImGui::Button("|##2")) algo_step_delay = 0.0f;
         ImGui::SameLine();
         ImGui::SliderFloat("##AlgoStepDelay", &algo_step_delay, 0.0f, 0.2f);
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("How fast the algorithm moves");
         ImGui::SameLine();
         if(ImGui::Button("Default##2")) algo_step_delay = 0.05f;
     }
@@ -325,11 +332,15 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
         if(ImGui::Button("|##3")) path_step_delay = 0.0f;
         ImGui::SameLine();
         ImGui::SliderFloat("##PathStepDelay", &path_step_delay, 0.0f, 0.2f);
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("How fast the path is drowen");
         ImGui::SameLine();
         if(ImGui::Button("Default##3")) path_step_delay = 0.05f;
         ImGui::EndDisabled();
 
         ImGui::Checkbox("Direct Path", &no_step_path);
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Give the path instantly");
     }
 
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
@@ -340,23 +351,34 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
                 (running_algorithm) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
         if(ImGui::Button("Start (Space)")) Run(context.grid_render.GetColorTheme());
         ImGui::PopStyleColor();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Start the algorithm");
         ImGui::EndDisabled();
 
         ImGui::SameLine();
         if(ImGui::Button("Reset (R)")) Reset();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Reset the algorithm and clear colors");
 
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, (pause_algorithm) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImVec4(0.7f, 0.2f, 0.0f, 1.0f));
         if(ImGui::Button(pause_algorithm ? "Play (P)" : "Pause (P)"))
             pause_algorithm = !pause_algorithm;
         ImGui::PopStyleColor();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Pause the algorithm");
 
         ImGui::BeginDisabled(running_algorithm);
         if(ImGui::Button("Random StartEnd (T)")) RandomStartEnd(context.grid, context.grid_render.GetColorTheme());
         ImGui::EndDisabled();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Set random start and end posititions");
         
         if(ImGui::Button("Settings (LShift)"))
             context.interface.show_settings_window = true;
+
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Show settings");
     }
 
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
@@ -370,6 +392,67 @@ void Pathfinder::SidebarInterface(ApplicationContext& context)
 }
 
 void Pathfinder::SettingsInterface(ApplicationContext& context)
-{
-    
+{   
+    bool use_custom_theme = context.grid_render.IsCustomTheme();
+    if(ImGui::Checkbox("Custom colors", &use_custom_theme))
+    {
+        if(use_custom_theme) context.grid_render.UseCustomTheme();
+        else context.grid_render.UsePresetTheme();
+    }
+
+    ImGui::SetNextItemOpen(use_custom_theme, ImGuiCond_Always);
+    if(ImGui::CollapsingHeader("Custom Theme"))
+    {
+        GridColorTheme custom_theme = context.grid_render.GetColorTheme();
+        ImVec4 imgui_color;
+
+        bool changed_colors = false;
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[PathStartColor]);
+        if(ImGui::ColorEdit4("Start Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[PathStartColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[PathEndColor]);
+        if(ImGui::ColorEdit4("End Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[PathEndColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[PathExploredColor]);
+        if(ImGui::ColorEdit4("Explored Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[PathExploredColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[PathFrontierColor]);
+        if(ImGui::ColorEdit4("Cursor Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[PathFrontierColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[PathBacktrackColor]);
+        if(ImGui::ColorEdit4("Backtrack Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[PathBacktrackColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+
+        imgui_color = SFMLToImColor(custom_theme.colors[PathColor]);
+        if(ImGui::ColorEdit4("Path Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[PathColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+
+        if(changed_colors)
+        {
+            context.grid_render.SetColorTheme(custom_theme);
+        }
+    }
 }

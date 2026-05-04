@@ -4,7 +4,6 @@ private:
     Point cursor;
     RectangleShape cursor_shape;
 
-    Color cursor_color;
     float cursor_outline_thickness;
 public:
 
@@ -12,19 +11,11 @@ public:
     
     void Init(Vector2f cell_size)
     {
-        cursor_color = Color::Black;
         cursor_outline_thickness = 2.0f;
 
         cursor_shape = RectangleShape(Vector2f(cell_size.x - 2, cell_size.y - 2));
         cursor_shape.setFillColor(Color::Transparent);
-        cursor_shape.setOutlineColor(cursor_color);
         cursor_shape.setOutlineThickness(cursor_outline_thickness);
-    }
-
-    void SetCursorColor(Color color)
-    {
-        cursor_color = color;
-        cursor_shape.setOutlineColor(cursor_color);
     }
 
     void SetOutlineThickness(float x)
@@ -47,6 +38,7 @@ public:
 
         if(cursor.valid)
         {
+            cursor_shape.setOutlineColor(grid_render.GetColorTheme().colors[CursorColor]);
             cursor_shape.setPosition(Vector2f(grid_position.x + cursor.position.x * cell_size.x, 
                                         grid_position.y + cursor.position.y * cell_size.y));
 

@@ -121,7 +121,33 @@ private:
                 "Grid Themes",
                 context.interface.themes_grid_popup, 
                 context, 
-                [&](ApplicationContext&) {return PopupInterface::GridThemes(context);}
+                [&](ApplicationContext&) {return PopupInterface::GridColorThemes(context);}
+            );
+
+            return true;
+        }
+        
+        if(context.interface.set_background_popup)
+        {
+            CenteredPopUpBase
+            (
+                "Set Background Color",
+                context.interface.set_background_popup, 
+                context, 
+                [&](ApplicationContext&) {return PopupInterface::SetBackgroundColor(context);}
+            );
+
+            return true;
+        }
+        
+        if(context.interface.show_keybinds_popup)
+        {
+            CenteredPopUpBase
+            (
+                "Keybinds",
+                context.interface.show_keybinds_popup, 
+                context, 
+                [&](ApplicationContext&) {return PopupInterface::ShowKeybinds(context);}
             );
 
             return true;

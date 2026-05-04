@@ -234,33 +234,47 @@ void Topo::SidebarInterface(ApplicationContext& context)
                 (using_tool == BRUSH) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
         if(ImGui::Button("Brush (B)")) using_tool = BRUSH;
         ImGui::PopStyleColor();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Brush to draw walls where you want");
 
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, 
                 (using_tool == BUCKET) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
         if(ImGui::Button("Bucket (G)")) using_tool = BUCKET;
         ImGui::PopStyleColor();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Bucket to fill big rooms");
 
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, 
                 (using_tool == RECTANGLE) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button));
         if(ImGui::Button("Rectangle (S)")) using_tool = RECTANGLE;
         ImGui::PopStyleColor();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Draw rectangles in your grid");
     }
 
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if(ImGui::CollapsingHeader("Actions"))
     {
         if(ImGui::Button("Reset (R)")) context.grid.ClearColors();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Reset grid colors");
 
         ImGui::SameLine();
         if(ImGui::Button("Fill (F)")) context.grid.Fill(CELL_WALL);
-        
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Fill grid with walls");
+
         ImGui::SameLine();
         if(ImGui::Button("Clear (C)")) context.grid.Fill(CELL_ROOM);
-        
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Clear walls from the grid");
+
         if(ImGui::Button("Settings (LShift)"))
             context.interface.show_settings_window = true;
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Show settings");
     }
     
     ImGui::EndDisabled();
@@ -268,5 +282,50 @@ void Topo::SidebarInterface(ApplicationContext& context)
 
 void Topo::SettingsInterface(ApplicationContext& context)
 {
-    
+    bool use_custom_theme = context.grid_render.IsCustomTheme();
+    if(ImGui::Checkbox("Custom colors", &use_custom_theme))
+    {
+        if(use_custom_theme) context.grid_render.UseCustomTheme();
+        else context.grid_render.UsePresetTheme();
+    }
+
+    ImGui::SetNextItemOpen(use_custom_theme, ImGuiCond_Always);
+    if(ImGui::CollapsingHeader("Custom Theme"))
+    {
+        GridColorTheme custom_theme = context.grid_render.GetColorTheme();
+        ImVec4 imgui_color;
+
+        bool changed_colors = false;
+
+        imgui_color = SFMLToImColor(custom_theme.colors[RoomColor]);
+        if(ImGui::ColorEdit4("Room Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[RoomColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[WallColor]);
+        if(ImGui::ColorEdit4("Wall Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[WallColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[LinesColor]);
+        if(ImGui::ColorEdit4("Lines Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[LinesColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[CursorColor]);
+        if(ImGui::ColorEdit4("Cursor Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[CursorColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+
+        if(changed_colors)
+            context.grid_render.SetColorTheme(custom_theme);
+    }
 }

@@ -22,6 +22,8 @@ public:
     bool save_grid_popup = false;
     bool resize_grid_popup = false;
     bool themes_grid_popup = false;
+    bool set_background_popup = false;
+    bool show_keybinds_popup = false;
 
     void SetSettingsWindow(Vector2f position, Vector2f size)
     {

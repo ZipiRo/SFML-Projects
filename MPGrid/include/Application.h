@@ -64,7 +64,7 @@ public:
     int using_module = 0;
     bool init_module = false;
 
-    ApplicationContext context{ 
+    ApplicationContext context { 
         .window = window, 
         .grid = grid, 
         .grid_render = grid_render, 
@@ -90,7 +90,7 @@ void Application::Start()
 
     srand(time(0));
     window.setFramerateLimit(99999);
-    background = Color::Black;
+    background_color = Color::Black;
 
     grid.Create(20, 20);
     grid_render.SetMaxLength(Vector2f(window.getSize().y - 70, window.getSize().y - 70));

@@ -11,9 +11,10 @@ private:
     Vector2f max_length;
     Vector2f offset;
 
-    GridTheme current_theme;
+    GridColorTheme current_color_theme;
     int using_theme;
 
+    bool use_custom_theme = false;
     bool refresh_shape_colors = false;
     bool refresh_lines_colors = false;
 
@@ -32,14 +33,16 @@ private:
     }
 
 public:
-    const std::vector<GridTheme> color_themes = GetGridColorThemes();
+    const std::vector<GridColorTheme> grid_color_themes = GetGridColorThemes();
     
     GridRenderer()
     {
-        current_theme = color_themes[0];
+        using_theme = 0;
+        current_color_theme = grid_color_themes[using_theme];
 
         refresh_shape_colors = false;
         refresh_lines_colors = false;
+        use_custom_theme = false;
     }
 
     void SetPosition(Vector2f position)
@@ -77,18 +80,39 @@ public:
         this->offset = Vector2f(offset.x / 2, offset.y / 2); 
     }
  
-    void SetColorTheme(int index)
+    void UsePresetTheme(int index = -1)
     {
-        if(index < 0 || index >= color_themes.size()) return;
+        if(index == -1) index = using_theme;
+        if(index < 0 || index >= grid_color_themes.size()) return;
+        using_theme = index;
         
-        current_theme = color_themes[index];
+        SetColorTheme(grid_color_themes[using_theme]);
+        use_custom_theme = false;
+    }
+
+    void UseCustomTheme()
+    {
+        GridColorTheme custom_theme = GrayViewColorTheme();
+        custom_theme.name = "Custom";
+        SetColorTheme(custom_theme);
+        use_custom_theme = true;
+    }
+
+    void SetColorTheme(const GridColorTheme &theme)
+    {
+        current_color_theme = theme;
         refresh_shape_colors = true;
         refresh_lines_colors = true;
     }
 
-    GridTheme GetColorTheme()
+    bool IsCustomTheme()
     {
-        return current_theme;
+        return use_custom_theme;
+    }
+
+    GridColorTheme GetColorTheme() const
+    {
+        return current_color_theme;
     }
 
     Point GetCellPoint(Vector2f from) const
@@ -132,12 +156,12 @@ public:
                 quad[4].position = Vector2f(cell_pos.x + cell_size.x, cell_pos.y + cell_size.y);
                 quad[5].position = Vector2f(cell_pos.x, cell_pos.y + cell_size.y);
 
-                quad[0].color = current_theme.colors[RoomColor];
-                quad[1].color = current_theme.colors[RoomColor];
-                quad[2].color = current_theme.colors[RoomColor];
-                quad[3].color = current_theme.colors[RoomColor];
-                quad[4].color = current_theme.colors[RoomColor];
-                quad[5].color = current_theme.colors[RoomColor];
+                quad[0].color = current_color_theme.colors[RoomColor];
+                quad[1].color = current_color_theme.colors[RoomColor];
+                quad[2].color = current_color_theme.colors[RoomColor];
+                quad[3].color = current_color_theme.colors[RoomColor];
+                quad[4].color = current_color_theme.colors[RoomColor];
+                quad[5].color = current_color_theme.colors[RoomColor];
 
                 index++;
             }
@@ -158,8 +182,8 @@ public:
             line[0].position = Vector2f(x, 0);
             line[1].position = Vector2f(x, cell_size.y * size.y);
 
-            line[0].color = current_theme.colors[LinesColor];
-            line[1].color = current_theme.colors[LinesColor];
+            line[0].color = current_color_theme.colors[LinesColor];
+            line[1].color = current_color_theme.colors[LinesColor];
             
             index++;
         }
@@ -174,8 +198,8 @@ public:
             line[0].position = Vector2f(0, y);
             line[1].position = Vector2f(cell_size.x * size.x, y);
 
-            line[0].color = current_theme.colors[LinesColor];
-            line[1].color = current_theme.colors[LinesColor];
+            line[0].color = current_color_theme.colors[LinesColor];
+            line[1].color = current_color_theme.colors[LinesColor];
 
             index++;
         }
@@ -193,12 +217,12 @@ public:
                 if(cell.type == CELL_ROOM)
                 {
                     if(cell.color != Color::Magenta) SetCellColor(cell.position, cell.color);
-                    else SetCellColor(cell.position, current_theme.colors[RoomColor]);
+                    else SetCellColor(cell.position, current_color_theme.colors[RoomColor]);
                 }
                 else if(cell.type == CELL_WALL)
                 {
                     if(cell.color != Color::Magenta) SetCellColor(cell.position, cell.color);
-                    else SetCellColor(cell.position, current_theme.colors[WallColor]);
+                    else SetCellColor(cell.position, current_color_theme.colors[WallColor]);
                 }
                 else SetCellColor(cell.position, cell.color);
 
@@ -211,7 +235,7 @@ public:
 
         if(refresh_lines_colors)
         {
-            SetLinesColor(current_theme.colors[LinesColor]);
+            SetLinesColor(current_color_theme.colors[LinesColor]);
             refresh_lines_colors = false;
         }
     }

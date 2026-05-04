@@ -15,9 +15,9 @@ protected:
 
     std::string window_title;
 
-    Color background = Color::White;
-
 public:
+    static Color background_color;
+
     ApplicationBase(std::string title, Vector2u size) : window_title(title), window(VideoMode(size), title)
     {
         window.setFramerateLimit(60);
@@ -54,7 +54,7 @@ public:
 
             Update(delta_time);
 
-            window.clear(background);
+            window.clear(background_color);
 
             Draw();
 
@@ -69,3 +69,5 @@ public:
     virtual void Update(float delta_time) = 0;
     virtual void Draw() {}
 };
+
+Color ApplicationBase::background_color;

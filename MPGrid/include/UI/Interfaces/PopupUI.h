@@ -1,6 +1,6 @@
 namespace PopupInterface
 {
-    bool lock_size_input = false;
+    bool lock_size_input = true;
     int size_input[2] = {};
     std::vector<std::string> files;
     char savefile_input[100];
@@ -88,6 +88,8 @@ namespace PopupInterface
             if(lock_size_input)
                 size_input[1] = size_input[0];
         }
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Make the rows and cols equal");
 
         ImGui::SameLine();
         ImGui::SetNextItemWidth(100.0f);
@@ -112,19 +114,19 @@ namespace PopupInterface
         }
     }  
 
-    void GridThemes(ApplicationContext &context)
+    void GridColorThemes(ApplicationContext &context)
     {
         ImGui::SetWindowSize(ImVec2(300, 500));
 
         ImGui::SetNextItemWidth(-1);
         if(ImGui::BeginCombo("##Themes", context.grid_render.GetColorTheme().name.c_str()))
         {
-            for(int i = 0; i < context.grid_render.color_themes.size(); i++)
+            for(int i = 0; i < context.grid_render.grid_color_themes.size(); i++)
             {
                 bool is_selected = false;
 
-                if(ImGui::Selectable(context.grid_render.color_themes[i].name.c_str(), is_selected))
-                    context.grid_render.SetColorTheme(i);
+                if(ImGui::Selectable(context.grid_render.grid_color_themes[i].name.c_str(), is_selected))
+                    context.grid_render.UsePresetTheme(i);
 
                 if(is_selected)
                     ImGui::SetItemDefaultFocus();
@@ -133,7 +135,7 @@ namespace PopupInterface
             ImGui::EndCombo();
         }
 
-        GridTheme grid_current_theme = context.grid_render.GetColorTheme();
+        GridColorTheme grid_current_theme = context.grid_render.GetColorTheme();
         
         ImVec4 imgui_color;
         for(auto &[name, color] : grid_current_theme.colors)
@@ -144,4 +146,55 @@ namespace PopupInterface
             ImGui::Text(std::string("\n" + name).c_str());
         }
     }
+
+    void SetBackgroundColor(ApplicationContext &context)
+    {
+        ImGui::SetWindowSize(ImVec2(400, 60), ImGuiCond_Always);
+            
+        ImVec4 imgui_color = SFMLToImColor(ApplicationBase::background_color);
+        if(ImGui::ColorEdit4("Background Color", (float*)&imgui_color))
+            ApplicationBase::background_color = ImColorToSFML(imgui_color);
+    }  
+
+    void ShowKeybinds(ApplicationContext &context)
+    {
+        ImGui::SetWindowSize(ImVec2(400, 400), ImGuiCond_Always);
+        
+        if (ImGui::BeginTable("Keybinds", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+        {
+            ImGui::TableSetupColumn("Key");
+            ImGui::TableSetupColumn("Action");
+            ImGui::TableHeadersRow();
+
+            auto Row = [](const char* key, const char* action)
+            {
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%s", key);
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s", action);
+            };
+
+            Row("LMB", "Place");
+            Row("RMB", "Remove");
+            Row("LShift", "Show module settings");
+            Row("Esc", "Close windows/popups");
+            Row("Num1", "Topografy module");
+            Row("Num2", "Pathfinding module");
+            Row("Num3", "Maze generator module");
+            Row("Tab", "Hide sidebar");
+            Row("Space", "Start algorithm");
+            Row("P", "Pause algorithm");
+            Row("H", "Hide interface");
+            Row("T", "Random algorithm positions");
+            Row("F", "Fill grid");
+            Row("C", "Clear grid");
+            Row("R", "Reset algorithm/grid");
+            Row("Ctrl + Wheel", "Switch algorithm");
+
+            ImGui::EndTable();
+        }
+    }  
 }

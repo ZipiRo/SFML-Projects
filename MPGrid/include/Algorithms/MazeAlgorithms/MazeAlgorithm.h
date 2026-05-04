@@ -20,6 +20,7 @@ struct MazeAlgorithmEntry
 
 #include "RecursiveBactracking.h"
 #include "RecursiveDivision.h"
+#include "Prim.h"
 
 std::vector<MazeAlgorithmEntry> GetMazeAlgorithms()
 {
@@ -37,6 +38,13 @@ std::vector<MazeAlgorithmEntry> GetMazeAlgorithms()
     algorithm_entry.name = RD::name;
     algorithm_entry.desc = RD::desc;
     algorithm_entry.Get = [](){ return std::make_unique<RD>(); };
+
+    algorithms.push_back(algorithm_entry);
+
+    algorithm_entry.abbr = Prim::abbr;
+    algorithm_entry.name = Prim::name;
+    algorithm_entry.desc = Prim::desc;
+    algorithm_entry.Get = [](){ return std::make_unique<Prim>(); };
 
     algorithms.push_back(algorithm_entry);
 

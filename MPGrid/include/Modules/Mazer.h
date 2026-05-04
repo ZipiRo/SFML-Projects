@@ -32,7 +32,7 @@ private:
     void SidebarInterface(ApplicationContext&) override;
     void SettingsInterface(ApplicationContext&) override;
 
-    void PlaceStart(Vector2i where, Grid &grid, GridTheme theme)
+    void PlaceStart(Vector2i where, Grid &grid, GridColorTheme theme)
     {
         if(!start.valid)
         {
@@ -52,7 +52,7 @@ private:
         }
     }
 
-    void RandomStart(Grid &grid, GridTheme theme)
+    void RandomStart(Grid &grid, GridColorTheme theme)
     {
         Vector2i random_position = Vector2i(rand() % grid.GetSize().x, rand() % grid.GetSize().y);
         while (!start.valid)
@@ -71,7 +71,7 @@ private:
         reset_grid = true;
     }
 
-    void Run(GridTheme theme)
+    void Run(GridColorTheme theme)
     {
         if(!start.valid) return;
         running_algorithm = true;
@@ -104,7 +104,7 @@ public:
         algorithm_state = ALGO_STAL;
 
         algo_step_delay = 0.05f;
-        start_algo_delay = 3;
+        start_algo_delay = 0;
 
         no_step_algorithm = false;
     }
@@ -210,7 +210,7 @@ void Mazer::SidebarInterface(ApplicationContext& context)
     ImGui::BeginDisabled(context.interface.show_settings_window);
 
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-    if(ImGui::CollapsingHeader("Algorithms"))
+    if(ImGui::CollapsingHeader("Algorithms (Ctrl + Wheel)"))
     {
         ImGui::BeginDisabled(running_algorithm);
         float offset = 0;
@@ -228,6 +228,8 @@ void Mazer::SidebarInterface(ApplicationContext& context)
 
             if(ImGui::Button(algorithms[i].abbr.c_str(), ImVec2(button_width, 0)))
                 using_algorithm = i;
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Maze generator algorithm");
             
             ImGui::PopStyleColor();
             
@@ -243,6 +245,8 @@ void Mazer::SidebarInterface(ApplicationContext& context)
         if(ImGui::Button("|##1")) start_algo_delay = 0;
         ImGui::SameLine();
         ImGui::SliderInt("##AlgoStartDelay", &start_algo_delay, 0, 5);
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Set the dealy to start the algorithm");
         ImGui::SameLine();
         if(ImGui::Button("Default##1")) start_algo_delay = 3;
 
@@ -250,6 +254,8 @@ void Mazer::SidebarInterface(ApplicationContext& context)
         if(ImGui::Button("|##2")) algo_step_delay = 0;
         ImGui::SameLine();
         ImGui::SliderFloat("##AlgoStepDelay", &algo_step_delay, 0.0f, 0.2f);
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("How fast the algorithm moves");
         ImGui::SameLine();
         if(ImGui::Button("Default##2")) algo_step_delay = 0.05f;
     }
@@ -263,22 +269,30 @@ void Mazer::SidebarInterface(ApplicationContext& context)
         if(ImGui::Button("Start (Space)")) 
             Run(context.grid_render.GetColorTheme());
         ImGui::PopStyleColor();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Start the algorithm");
         ImGui::EndDisabled();
 
         ImGui::SameLine();
         if(ImGui::Button("Reset (R)")) Reset();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Reset the algorithm and clear colors");
 
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, (pause_algorithm) ? ImVec4(0.2f, 0.7f, 0.2f, 1.0f) : ImVec4(0.7f, 0.2f, 0.0f, 1.0f));
         if(ImGui::Button(pause_algorithm ? "Play (P)" : "Pause (P)"))
             pause_algorithm = !pause_algorithm;
         ImGui::PopStyleColor();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Pause the algorithm");
 
         if(ImGui::Button("Fill (F)")) 
         {
             context.grid.Fill(CELL_WALL);
             start.valid = false;
         }
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Fill grid with walls");
         
         ImGui::SameLine();
         if(ImGui::Button("Clear (C)")) 
@@ -286,13 +300,19 @@ void Mazer::SidebarInterface(ApplicationContext& context)
             context.grid.Fill(CELL_ROOM);
             start.valid = false;
         }
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Clear walls from the grid");
 
         ImGui::BeginDisabled(running_algorithm);
         if(ImGui::Button("Random Start (T)")) RandomStart(context.grid, context.grid_render.GetColorTheme());
         ImGui::EndDisabled();
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Set random start positition");
         
         if(ImGui::Button("Settings (LShift)"))
             context.interface.show_settings_window = true;
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Show settings");
     }
 
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
@@ -307,5 +327,45 @@ void Mazer::SidebarInterface(ApplicationContext& context)
 
 void Mazer::SettingsInterface(ApplicationContext& context)
 {
-    
+    bool use_custom_theme = context.grid_render.IsCustomTheme();
+    if(ImGui::Checkbox("Custom colors", &use_custom_theme))
+    {
+        if(use_custom_theme) context.grid_render.UseCustomTheme();
+        else context.grid_render.UsePresetTheme();
+    }
+
+    ImGui::SetNextItemOpen(use_custom_theme, ImGuiCond_Always);
+    if(ImGui::CollapsingHeader("Custom Theme"))
+    {
+        GridColorTheme custom_theme = context.grid_render.GetColorTheme();
+        ImVec4 imgui_color;
+
+        bool changed_colors = false;
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[MazeStartColor]);
+        if(ImGui::ColorEdit4("Start Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[MazeStartColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[MazePrimaryColor]);
+        if(ImGui::ColorEdit4("Primary Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[MazePrimaryColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+            
+        imgui_color = SFMLToImColor(custom_theme.colors[MazeSecondaryColor]);
+        if(ImGui::ColorEdit4("Secondary Color", (float*)&imgui_color))
+        {
+            custom_theme.colors[MazeSecondaryColor] = ImColorToSFML(imgui_color);
+            changed_colors = true;
+        }
+
+        if(changed_colors)
+        {
+            context.grid_render.SetColorTheme(custom_theme);
+        }
+    }
 }
