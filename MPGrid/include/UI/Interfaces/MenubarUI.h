@@ -35,26 +35,6 @@ namespace MenubarInterface
 
             ImGui::EndMenu();
         }
-
-        if(ImGui::BeginMenu("View"))
-        {
-            if(ImGui::MenuItem("SetBackgroundColor"))
-            {
-                context.interface.set_background_popup = true;
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if(ImGui::BeginMenu("Help"))
-        {
-            if(ImGui::MenuItem("Keybinds"))
-            {
-                context.interface.show_keybinds_popup = true;
-            }
-
-            ImGui::EndMenu();
-        }
     }
 
 };
@@ -64,6 +44,26 @@ void InterfaceManager::Menubar(ApplicationContext &context)
     ImGui::BeginMainMenuBar();
 
     MenubarInterface::GridMenu(context);
+
+    if(ImGui::BeginMenu("View"))
+    {
+        if(ImGui::MenuItem("SetBackgroundColor"))
+        {
+            context.interface.set_background_popup = true;
+        }
+
+        ImGui::EndMenu();
+    }
+
+    if(ImGui::BeginMenu("Help"))
+    {
+        if(ImGui::MenuItem("Keybinds"))
+        {
+            context.interface.show_keybinds_popup = true;
+        }
+
+        ImGui::EndMenu();
+    }
 
     ImGui::EndMainMenuBar();
 }
